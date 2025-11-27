@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Natillera - Gestión</title>
+    <link rel="stylesheet" href="./estilos.css" />
+</head>
+<body>
+    <div class="container">
+        <h1>Natillera - Gestión</h1>
+
+        <section id="socios-section" class="card">
+        <h2>Crear socio</h2>
+        <form id="form-socio">
+            <input name="nombre1" placeholder="Nombre 1" required />
+            <input name="nombre2" placeholder="Nombre 2 (opcional)" />
+            <input name="apellido1" placeholder="Apellido 1" required />
+            <input name="apellido2" placeholder="Apellido 2 (opcional)" />
+            <input name="correo" placeholder="Correo" />
+            <input name="telefono" placeholder="Teléfono" />
+            <button type="submit">Guardar socio</button>
+        </form>
+
+        <h3>Lista de socios</h3>
+        <table id="tabla-socios">
+            <thead><tr><th>Nombre</th><th>Correo</th><th>Tel</th><th>Acciones</th></tr></thead>
+            <tbody></tbody>
+        </table>
+        </section>
+
+        <section id="pagos-section" class="card" style="display:none;">
+        <h2>Pagos del socio: <span id="socio-nombre"></span></h2>
+        <button id="volver-lista">Volver a socios</button>
+        <table id="tabla-pagos">
+            <thead>
+            <tr><th>Semana</th><th>Fecha pago</th><th>Forma pago</th><th>Valor</th><th>Nombre pagador</th><th>Firma recibe</th><th>Estado</th><th>Acción</th></tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        </section>
+
+        <section id="rifas-section" class="card">
+        <h2>Rifas</h2>
+        <form id="form-rifa">
+            <input name="nombre" placeholder="Nombre rifa" required />
+            <input name="fecha_evento" type="date" required />
+            <textarea name="descripcion" placeholder="Descripción"></textarea>
+            <button type="submit">Crear rifa + generar numeros 00-99</button>
+        </form>
+
+        <h3>Listado rifas</h3>
+        <ul id="lista-rifas"></ul>
+
+        <div id="detalles-rifa" style="display:none;">
+            <h4>Rifa: <span id="rifa-nombre"></span></h4>
+            <div id="numeros-grid"></div>
+            <button id="sorteo-btn">Sortear ganador</button>
+            <div id="resultado-sorteo"></div>
+        </div>
+        </section>
+    </div>
+
+    <script src="./app.js"></script>
+</body>
+</html>
