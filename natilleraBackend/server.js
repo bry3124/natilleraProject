@@ -1,202 +1,221 @@
+// server.js
 const express = require('express');
-const bodyParser = require('body-parser');
 const cors = require('cors');
-const db = require('./db');
-require('dotenv').config();
+const { Pool } = require('pg');
 
 const app = express();
-app.use(cors());
-app.use(bodyParser.json());
+const port = 4000;
 
-// --- SOCIOS ---
+app.use(cors());
+app.use(express.json());
+
+// =====================
+// CONFIGURACIÓN DB
+// =====================
+const pool = new Pool({
+  user: 'postgres',
+  host: 'localhost',
+  database: 'bd_natillera',
+  password: 'maderas2025',
+  port: 5432,
+});
+
+// =====================
+// RUTAS: SOCIOS
+// =====================
+
 // Crear socio
 app.post('/api/socios', async (req, res) => {
-    try {
-        const { nombre1, nombre2, apellido1, apellido2, correo, telefono } = req.body;
-        const q = `INSERT INTO socios (nombre1,nombre2,apellido1,apellido2,correo,telefono)
-                VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`;
-        const { rows } = await db.query(q, [nombre1, nombre2, apellido1, apellido2, correo, telefono]);
-        res.json(rows[0]);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Error creando socio' });
+  try {
+    const { documento, nombre1, nombre2, apellido1, apellido2, correo, telefono, foto_url, firma_url } = req.body;
+
+    if (!documento || !nombre1 || !apellido1) {
+      return res.status(400).json({ ok: false, error: 'Faltan datos obligatorios' });
     }
+
+    // Validar documento único
+    const exists = await pool.query('SELECT id FROM socios WHERE documento=$1', [documento]);
+    if (exists.rows.length > 0) {
+      return res.status(400).json({ ok: false, error: 'El documento ya está registrado' });
+    }
+
+    const result = await pool.query(
+      `INSERT INTO socios
+      (documento,nombre1,nombre2,apellido1,apellido2,correo,telefono,foto_url,firma_url)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+      [documento,nombre1,nombre2,apellido1,apellido2,correo,telefono,foto_url,firma_url]
+    );
+
+    res.json({ ok: true, socio: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, error: 'Error del servidor' });
+  }
 });
 
-// Modificar socio
-app.put('/api/socios/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { nombre1, nombre2, apellido1, apellido2, correo, telefono } = req.body;
-        const q = `UPDATE socios SET nombre1=$1,nombre2=$2,apellido1=$3,apellido2=$4,correo=$5,telefono=$6
-                WHERE id=$7 RETURNING *`;
-        const { rows } = await db.query(q, [nombre1, nombre2, apellido1, apellido2, correo, telefono, id]);
-        res.json(rows[0]);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Error actualizando socio' });
-    }
-});
-
-// Obtener todos los socios
+// Listar socios
 app.get('/api/socios', async (req, res) => {
-    try {
-        const { rows } = await db.query('SELECT * FROM socios ORDER BY nombre1, apellido1');
-        res.json(rows);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Error obteniendo socios' });
-    }
+  try {
+    const result = await pool.query('SELECT * FROM socios ORDER BY id ASC');
+    res.json({ ok: true, socios: result.rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false });
+  }
 });
 
-// Obtener un socio por id
+// Obtener socio por id
 app.get('/api/socios/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { rows } = await db.query('SELECT * FROM socios WHERE id=$1', [id]);
-        res.json(rows[0]);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Error obteniendo socio' });
-    }
+  try {
+    const { id } = req.params;
+    const result = await pool.query('SELECT * FROM socios WHERE id=$1', [id]);
+    if (result.rows.length === 0) return res.status(404).json({ ok: false, error: 'No encontrado' });
+    res.json({ ok: true, socio: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false });
+  }
 });
 
-// --- PAGOS ---
-// Registrar/actualizar pago por semana
-app.post('/api/pagos', async (req, res) => {
-    try {
-        const { socio_id, semana, fecha_pago, forma_pago, valor, nombre_pagador, firma_recibe, estado } = req.body;
-        // upsert: si ya existe actualiza, sino inserta
-        const q = `
-            INSERT INTO pagos (socio_id, semana, fecha_pago, forma_pago, valor, nombre_pagador, firma_recibe, estado)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-            ON CONFLICT (socio_id, semana) DO UPDATE SET
-                fecha_pago = EXCLUDED.fecha_pago,
-                forma_pago = EXCLUDED.forma_pago,
-                valor = EXCLUDED.valor,
-                nombre_pagador = EXCLUDED.nombre_pagador,
-                firma_recibe = EXCLUDED.firma_recibe,
-                estado = EXCLUDED.estado
-            RETURNING *`;
-        const { rows } = await db.query(q, [socio_id, semana, fecha_pago, forma_pago, valor, nombre_pagador, firma_recibe, estado || 'PENDIENTE']);
-        res.json(rows[0]);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Error guardando pago' });
+// Editar socio
+app.put('/api/socios/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { documento, nombre1, nombre2, apellido1, apellido2, correo, telefono, foto_url, firma_url } = req.body;
+
+    if (!documento || !nombre1 || !apellido1) {
+      return res.status(400).json({ ok: false, error: 'Faltan datos obligatorios' });
     }
+
+    // Validar documento único
+    const exists = await pool.query('SELECT id FROM socios WHERE documento=$1 AND id<>$2', [documento, id]);
+    if (exists.rows.length > 0) {
+      return res.status(400).json({ ok: false, error: 'El documento ya está registrado' });
+    }
+
+    const result = await pool.query(
+      `UPDATE socios SET
+        documento=$1, nombre1=$2, nombre2=$3, apellido1=$4, apellido2=$5,
+        correo=$6, telefono=$7, foto_url=$8, firma_url=$9
+       WHERE id=$10 RETURNING *`,
+      [documento,nombre1,nombre2,apellido1,apellido2,correo,telefono,foto_url,firma_url,id]
+    );
+
+    res.json({ ok: true, socio: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, error: 'Error del servidor' });
+  }
 });
 
-// Obtener pagos por socio
+// Inhabilitar socio
+app.put('/api/socios/:id/estado', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { estado } = req.body;
+
+    const result = await pool.query(
+      `UPDATE socios SET estado=$1, inhabilitado_en=now() WHERE id=$2 RETURNING *`,
+      [estado, id]
+    );
+
+    res.json({ ok: true, socio: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false });
+  }
+});
+
+// =====================
+// RUTAS: PAGOS
+// =====================
+
+// Obtener pagos de un socio
 app.get('/api/socios/:id/pagos', async (req, res) => {
-    try {
-        const socio_id = req.params.id;
-        const q = `SELECT * FROM pagos WHERE socio_id=$1 ORDER BY semana`;
-        const { rows } = await db.query(q, [socio_id]);
-        // si no existen registros, crear plantilla de 52 semanas vacías
-        if (rows.length === 0) {
-            const inserts = [];
-            for (let s=1; s<=52; s++) {
-                inserts.push(db.query(`INSERT INTO pagos (socio_id, semana, estado) VALUES ($1,$2,'PENDIENTE') RETURNING *`, [socio_id, s]));
-            }
-            const results = await Promise.all(inserts);
-            return res.json(results.map(r=>r.rows[0]));
-        }
-            res.json(rows);
-        } catch (err) {
-            console.error(err);
-            res.status(500).json({ error: 'Error obteniendo pagos' });
-        }
+  try {
+    const { id } = req.params;
+    const result = await pool.query(
+      `SELECT * FROM pagos WHERE socio_id=$1 ORDER BY semana ASC`,
+      [id]
+    );
+    res.json({ ok: true, pagos: result.rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false });
+  }
 });
 
-// Obtener todos los pagos (opcional)
-app.get('/api/pagos', async (req, res) => {
-    try {
-        const { rows } = await db.query('SELECT p.*, s.nombre1, s.apellido1 FROM pagos p LEFT JOIN socios s ON s.id=p.socio_id ORDER BY socio_id, semana');
-        res.json(rows);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Error obteniendo pagos' });
-    }
+// Registrar/editar pago
+app.put('/api/pagos/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { fecha_pago, forma_pago, valor, nombre_pagador, firma_recibe, estado, usuario } = req.body;
+
+    // Guardar historial antes de actualizar
+    const pagoActual = await pool.query('SELECT * FROM pagos WHERE id=$1', [id]);
+    if (pagoActual.rows.length === 0) return res.status(404).json({ ok: false, error: 'Pago no encontrado' });
+
+    await pool.query(
+      `INSERT INTO pagos_historial (pago_id, socio_id, semana, cambios, usuario)
+       VALUES ($1,$2,$3,$4,$5)`,
+      [
+        id,
+        pagoActual.rows[0].socio_id,
+        pagoActual.rows[0].semana,
+        JSON.stringify(pagoActual.rows[0]),
+        usuario || 'Sistema'
+      ]
+    );
+
+    const result = await pool.query(
+      `UPDATE pagos SET fecha_pago=$1, forma_pago=$2, valor=$3, nombre_pagador=$4, firma_recibe=$5, estado=$6
+       WHERE id=$7 RETURNING *`,
+      [fecha_pago, forma_pago, valor, nombre_pagador, firma_recibe, estado, id]
+    );
+
+    res.json({ ok: true, pago: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false });
+  }
 });
 
-// --- RIFAS ---
+// =====================
+// RUTAS: RIFAS
+// =====================
+
 // Crear rifa
 app.post('/api/rifas', async (req, res) => {
-    try {
-        const { nombre, descripcion, fecha_evento, frecuencia } = req.body;
-        const q = `INSERT INTO rifas (nombre, descripcion, fecha_evento, frecuencia) VALUES ($1,$2,$3,$4) RETURNING *`;
-        const { rows } = await db.query(q, [nombre, descripcion, fecha_evento, frecuencia]);
-        const rifa = rows[0];
+  try {
+    const { nombre, descripcion, fecha_evento, frecuencia } = req.body;
 
-        // crear numeros 00..99 para la rifa con precio por defecto 20
-        const inserts = [];
-        for (let i=0;i<100;i++){
-        const num = i.toString().padStart(2,'0');
-        inserts.push(db.query(`INSERT INTO rifa_numeros (rifa_id, numero, precio) VALUES ($1,$2,$3)`, [rifa.id, num, 20]));
-        }
-        await Promise.all(inserts);
-        res.json(rifa);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Error creando rifa' });
-    }
+    const result = await pool.query(
+      `INSERT INTO rifas (nombre, descripcion, fecha_evento, frecuencia)
+       VALUES ($1,$2,$3,$4) RETURNING *`,
+      [nombre, descripcion, fecha_evento, frecuencia]
+    );
+
+    res.json({ ok: true, rifa: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false });
+  }
 });
 
-// Obtener rifas
+// Listar rifas
 app.get('/api/rifas', async (req, res) => {
-    try {
-        const { rows } = await db.query('SELECT * FROM rifas ORDER BY fecha_evento DESC');
-        res.json(rows);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Error obteniendo rifas' });
-    }
-    });
-
-// Obtener numeros de una rifa
-app.get('/api/rifas/:id/numeros', async (req, res) => {
-    try {
-        const rifa_id = req.params.id;
-        const { rows } = await db.query('SELECT rn.*, s.nombre1, s.apellido1, s.correo FROM rifa_numeros rn LEFT JOIN socios s ON s.id = rn.socio_id WHERE rn.rifa_id=$1 ORDER BY numero', [rifa_id]);
-        res.json(rows);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Error obteniendo numeros' });
-    }
+  try {
+    const result = await pool.query('SELECT * FROM rifas ORDER BY fecha_evento ASC');
+    res.json({ ok: true, rifas: result.rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false });
+  }
 });
 
-// Comprar/Asignar numero
-app.post('/api/rifas/:id/numero/assign', async (req, res) => {
-    try {
-        const rifa_id = req.params.id;
-        const { numero, socio_id } = req.body;
-        const q = `UPDATE rifa_numeros SET socio_id=$1, comprado_en=now() WHERE rifa_id=$2 AND numero=$3 RETURNING *`;
-        const { rows } = await db.query(q, [socio_id, rifa_id, numero]);
-        res.json(rows[0]);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Error asignando numero' });
-    }
+// =====================
+// START SERVER
+// =====================
+app.listen(port, () => {
+  console.log(`Servidor corriendo en http://localhost:${port}`);
 });
-
-// Sortear ganador (elige random numero asignado)
-app.post('/api/rifas/:id/sorteo', async (req, res) => {
-    try {
-        const rifa_id = req.params.id;
-        const q = `SELECT * FROM rifa_numeros WHERE rifa_id=$1 AND socio_id IS NOT NULL`;
-        const { rows } = await db.query(q, [rifa_id]);
-        if (rows.length === 0) return res.status(400).json({ error: 'No hay numeros asignados' });
-
-        const ganador = rows[Math.floor(Math.random()*rows.length)];
-        // registrar ganador
-        const premio = 2000; // Si quieres otra lógica, ajusta
-        await db.query(`INSERT INTO rifa_ganadores (rifa_id, numero_ganador, socio_id, premio) VALUES ($1,$2,$3,$4)`, [rifa_id, ganador.numero, ganador.socio_id, premio]);
-        res.json({ ganador: ganador.numero, socio_id: ganador.socio_id, premio });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Error en sorteo' });
-    }
-});
-
-const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => console.log(`API running on port ${PORT}`));
