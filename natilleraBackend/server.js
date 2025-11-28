@@ -92,25 +92,55 @@ app.post('/api/socios', async (req, res) => {
 app.get('/api/socios', async (req, res) => {
   try {
     const { search, status } = req.query;
-    let q = 'SELECT * FROM socios';
+
+    // Base de la consulta: tomamos socios y sumamos pagos.valor
+    let q = `
+      SELECT s.*,
+             COALESCE(SUM(p.valor), 0) AS total_ahorrado
+      FROM socios s
+      LEFT JOIN pagos p ON p.socio_id = s.id
+    `;
+
     const where = [];
     const params = [];
+
+    // filtros (añadimos condiciones sobre la tabla "s")
     if (status) {
       params.push(status);
-      where.push(`estado = $${params.length}`);
+      where.push(`s.estado = $${params.length}`);
     }
+
     if (search) {
       params.push(`%${search}%`);
-      where.push(`(documento ILIKE $${params.length} OR nombre1 ILIKE $${params.length} OR apellido1 ILIKE $${params.length} OR correo ILIKE $${params.length})`);
+      where.push(`(
+        s.documento ILIKE $${params.length}
+        OR s.nombre1 ILIKE $${params.length}
+        OR s.nombre2 ILIKE $${params.length}
+        OR s.apellido1 ILIKE $${params.length}
+        OR s.apellido2 ILIKE $${params.length}
+        OR s.correo ILIKE $${params.length}
+        OR s.telefono ILIKE $${params.length}
+      )`);
     }
-    if (where.length) q += ' WHERE ' + where.join(' AND ');
-    q += ' ORDER BY id ASC';
+
+    if (where.length) {
+      q += ' WHERE ' + where.join(' AND ');
+    }
+
+    // Agrupamos por la PK para poder usar SUM(p.valor)
+    q += ' GROUP BY s.id';
+
+    // Orden (puedes cambiar por nombre u otro campo)
+    q += ' ORDER BY s.id ASC';
+
     const { rows } = await pool.query(q, params);
+
     return res.json({ ok: true, socios: rows });
   } catch (e) {
     return handleError(res, e, 'No se pudieron listar socios');
   }
 });
+
 
 // Obtener 1 socio
 app.get('/api/socios/:id', async (req, res) => {

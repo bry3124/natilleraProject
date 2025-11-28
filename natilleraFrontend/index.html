@@ -13,7 +13,6 @@
       <h1>Natillera</h1>
       <div class="top-actions">
         <input id="search-input" placeholder="Buscar por nombre, documento, correo..." />
-        <button id="btn-new-socio" class="btn primary">+ Nuevo Socio</button>
       </div>
     </header>
 
@@ -66,7 +65,14 @@
         <div class="table-wrap">
           <table id="tabla-socios">
             <thead>
-              <tr><th>Documento</th><th>Nombre completo</th><th>Contacto</th><th>Estado</th><th>Acciones</th></tr>
+              <tr>
+                <th>Documento</th>
+                <th>Nombre completo</th>
+                <th>Contacto</th>
+                <th>Total Aportes</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
             </thead>
             <tbody></tbody>
           </table>
@@ -75,7 +81,7 @@
 
       <!-- Pagos: lista 52 semanas con botón por fila que abre modal -->
       <section class="card card-payments" id="pagos-section">
-        <h2>Pagos (Modal por semana)</h2>
+        <h2>Buscar e Ingresar Pagos</h2>
         <div class="row">
           <label>Seleccionar socio:
             <select id="select-socio-pagos"><option value="">-- Seleccione --</option></select>

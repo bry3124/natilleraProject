@@ -133,22 +133,39 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (e) { console.error(e); toast('No se pudo cargar socios'); }
   }
 
-  function renderSociosTable() {
-    tablaSociosBody.innerHTML = '';
-    socios.forEach(s => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${s.documento}</td>
-        <td>${formatNombre(s)}</td>
-        <td>${s.correo||''} <br><small>${s.telefono||''}</small></td>
-        <td><span class="badge ${s.estado==='ACTIVO' ? 'paid' : 'late'}">${s.estado}</span></td>
-        <td>
-          <button class="btn secondary btn-edit" data-id="${s.id}"><i class="fa fa-edit"></i> Editar</button>
-          <button class="btn primary btn-view-pagos" data-id="${s.id}"><i class="fa fa-table"></i> Ver Pagos</button>
-        </td>
-      `;
-      tablaSociosBody.appendChild(tr);
-    });
+function renderSociosTable() {
+  tablaSociosBody.innerHTML = '';
+
+  socios.forEach(s => {
+    const total = parseFloat(s.total_ahorrado || 0);
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${s.documento}</td>
+      <td>${formatNombre(s)}</td>
+      <td>${s.correo || ''}<br><small>${s.telefono || ''}</small></td>
+      
+      <td class="money">
+        ${total.toLocaleString('es-CO', { style: 'currency', currency: 'COP' })}
+      </td>
+
+      <td>
+        <span class="badge ${s.estado === 'ACTIVO' ? 'paid' : 'late'}">${s.estado}</span>
+      </td>
+
+      <td>
+        <button class="btn secondary btn-edit" data-id="${s.id}">
+          <i class="fa fa-edit"></i> Editar
+        </button>
+
+        <button class="btn primary btn-view-pagos" data-id="${s.id}">
+          <i class="fa fa-table"></i> Ver Pagos
+        </button>
+      </td>
+    `;
+
+    tablaSociosBody.appendChild(tr);
+  });
 
     // bind buttons
     document.querySelectorAll('.btn-edit').forEach(b => b.addEventListener('click', (e) => {
