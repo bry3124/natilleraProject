@@ -1,124 +1,167 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Natillera • Gestión completa</title>
-<link rel="stylesheet" href="./estilos.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Natillera • Gestión (SPA)</title>
+  <link rel="stylesheet" href="./estilos.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 <body>
-<div class="app">
-
-  <!-- HEADER -->
-  <header class="header">
-    <h1>Natillera</h1>
-    <div class="top-actions">
-      <input id="search-input" placeholder="Buscar socios por nombre, correo, documento..." />
-      <button id="btn-new-socio" class="btn primary">+ Nuevo Socio</button>
-    </div>
-  </header>
-
-  <!-- MAIN CONTENT -->
-  <main class="main">
-
-    <!-- FORMULARIO SOCIO -->
-    <section class="card card-form" id="form-socio-section">
-      <h2>Crear / Editar Socio</h2>
-      <form id="form-socio">
-        <div class="row">
-          <label>Documento<input name="documento" required/></label>
-        </div>
-        <div class="row">
-          <label>Nombre 1<input name="nombre1" required/></label>
-          <label>Nombre 2<input name="nombre2"/></label>
-        </div>
-        <div class="row">
-          <label>Apellido 1<input name="apellido1" required/></label>
-          <label>Apellido 2<input name="apellido2"/></label>
-        </div>
-        <div class="row">
-          <label>Correo<input name="correo" type="email"/></label>
-          <label>Teléfono<input name="telefono"/></label>
-        </div>
-        <div class="row">
-          <label>Foto (URL/Base64)<input name="foto_url"/></label>
-          <label>Firma (URL/Base64)<input name="firma_url"/></label>
-        </div>
-        <div class="form-actions">
-          <button type="button" id="btn-cancel-edit" class="btn secondary hidden">Cancelar</button>
-          <button type="submit" id="btn-save-socio" class="btn primary">Guardar Socio</button>
-          <button type="button" id="btn-disable-socio" class="btn danger hidden">Inhabilitar</button>
-        </div>
-      </form>
-    </section>
-
-    <!-- LISTA SOCIOS -->
-    <section class="card card-list" id="lista-socios-section">
-      <h2>Socios</h2>
-      <div class="filters">
-        <select id="filter-status">
-          <option value="">Todos</option>
-          <option value="ACTIVO">Activos</option>
-          <option value="INHABILITADO">Inhabilitados</option>
-        </select>
+  <div class="app">
+    <header class="header">
+      <h1>Natillera</h1>
+      <div class="top-actions">
+        <input id="search-input" placeholder="Buscar por nombre, documento, correo..." />
+        <button id="btn-new-socio" class="btn primary">+ Nuevo Socio</button>
       </div>
-      <table id="tabla-socios">
-        <thead>
-          <tr>
-            <th>Documento</th>
-            <th>Nombre Completo</th>
-            <th>Contacto</th>
-            <th>Estado</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </section>
+    </header>
 
-    <!-- PAGOS POR SEMANA -->
-    <section class="card card-list" id="pagos-section">
-      <h2>Pagos por Socio</h2>
-      <select id="select-socio-pagos">
-        <option value="">Seleccionar socio...</option>
-      </select>
-      <table id="tabla-pagos">
-        <thead>
-          <tr>
-            <th>Semana</th>
-            <th>Fecha de pago</th>
-            <th>Forma de pago</th>
-            <th>Valor aportado</th>
-            <th>Nombre Pagador</th>
-            <th>Firma quien recibe</th>
-            <th>Estado</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </section>
+    <main class="main">
 
-    <!-- RIFAS -->
-    <section class="card card-list" id="rifas-section">
-      <h2>Rifas</h2>
-      <form id="form-rifa">
+      <!-- Form crear/editar socio -->
+      <section class="card card-form" id="form-socio-section">
+        <h2 id="form-title">Crear Socio</h2>
+        <form id="form-socio" autocomplete="off">
+          <div class="row">
+            <label>Documento<input name="documento" id="documento" required /></label>
+          </div>
+          <div class="row">
+            <label>Nombre 1<input name="nombre1" id="nombre1" required /></label>
+            <label>Nombre 2<input name="nombre2" id="nombre2" /></label>
+          </div>
+          <div class="row">
+            <label>Apellido 1<input name="apellido1" id="apellido1" required /></label>
+            <label>Apellido 2<input name="apellido2" id="apellido2" /></label>
+          </div>
+          <div class="row">
+            <label>Correo<input name="correo" id="correo" type="email" /></label>
+            <label>Teléfono<input name="telefono" id="telefono" /></label>
+          </div>
+          <div class="row">
+            <label>Foto (URL/Base64)<input name="foto_url" id="foto_url" /></label>
+            <label>Firma (URL/Base64)<input name="firma_url" id="firma_url" /></label>
+          </div>
+
+          <div class="form-actions">
+            <button id="btn-cancel-edit" type="button" class="btn secondary hidden">Cancelar</button>
+            <button id="btn-save-socio" type="submit" class="btn primary">Guardar socio</button>
+            <button id="btn-toggle-estado" type="button" class="btn danger hidden">Inhabilitar</button>
+          </div>
+          <input type="hidden" id="socio-id" />
+        </form>
+      </section>
+
+      <!-- Lista socios -->
+      <section class="card card-list" id="lista-socios-section">
+        <h2>Socios</h2>
+        <div class="filters">
+          <select id="filter-status">
+            <option value="">Todos</option>
+            <option value="ACTIVO">Activos</option>
+            <option value="INHABILITADO">Inhabilitados</option>
+          </select>
+        </div>
+
+        <div class="table-wrap">
+          <table id="tabla-socios">
+            <thead>
+              <tr><th>Documento</th><th>Nombre completo</th><th>Contacto</th><th>Estado</th><th>Acciones</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Pagos: lista 52 semanas con botón por fila que abre modal -->
+      <section class="card card-payments" id="pagos-section">
+        <h2>Pagos (Modal por semana)</h2>
         <div class="row">
-          <label>Nombre<input name="nombre" required/></label>
-          <label>Fecha evento<input name="fecha_evento" type="date" required/></label>
+          <label>Seleccionar socio:
+            <select id="select-socio-pagos"><option value="">-- Seleccione --</option></select>
+          </label>
+          <div class="legend">
+            <span class="badge paid">Pagado</span>
+            <span class="badge pending">Pendiente</span>
+            <span class="badge late">Atrasado</span>
+          </div>
         </div>
-        <label>Descripción<textarea name="descripcion"></textarea></label>
+
+        <div id="semanas-grid" class="semanas-grid" aria-live="polite">
+          <!-- 52 filas generadas por JS -->
+        </div>
+      </section>
+
+      <!-- Rifas -->
+      <section class="card card-list" id="rifas-section">
+        <h2>Rifas</h2>
+        <form id="form-rifa">
+          <div class="row">
+            <label>Nombre<input name="nombre" required /></label>
+            <label>Fecha evento<input name="fecha_evento" type="date" required /></label>
+          </div>
+          <label>Descripción<textarea name="descripcion"></textarea></label>
+          <div class="form-actions">
+            <button class="btn primary" type="submit">Crear rifa</button>
+          </div>
+        </form>
+
+        <div id="lista-rifas" class="lista-rifas"></div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Modal: Registrar pago -->
+  <div id="modal-pago" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <button class="modal-close" id="modal-pago-close">&times;</button>
+      <h3 id="modal-pago-title">Registrar pago - Semana <span id="modal-semana">0</span></h3>
+
+      <form id="form-pago">
+        <div class="row">
+          <label>Fecha de pago<input type="date" id="p_fecha_pago" /></label>
+          <label>Forma de pago
+            <select id="p_forma_pago">
+              <option value="">--</option>
+              <option>EFECTIVO</option>
+              <option>NEQUI</option>
+              <option>BANCOLOMBIA</option>
+
+            </select>
+          </label>
+        </div>
+
+        <div class="row">
+          <label>Valor aportado<input id="p_valor" type="number" min="0" /></label>
+          <label>Nombre pagador<input id="p_nombre_pagador" /></label>
+        </div>
+
+        <div class="row">
+          <label>Firma quien recibe<input id="p_firma_recibe" /></label>
+          <label>Estado
+            <select id="p_estado">
+              <option>PENDIENTE</option>
+              <option>PAGADO</option>
+              <option>ANULADO</option>
+            </select>
+          </label>
+        </div>
+
         <div class="form-actions">
-          <button type="submit" class="btn primary">Crear Rifa</button>
+          <button type="button" class="btn secondary" id="btn-cancel-pago">Cancelar</button>
+          <button type="submit" class="btn primary" id="btn-save-pago">Guardar pago</button>
         </div>
+
+        <input type="hidden" id="p_pago_id" />
+        <input type="hidden" id="p_socio_id" />
+        <input type="hidden" id="p_semana" />
       </form>
-      <div id="lista-rifas"></div>
-    </section>
+    </div>
+  </div>
 
-  </main>
-</div>
+  <div id="toast" class="toast hidden"></div>
 
-<script src="./app.js"></script>
+  <script src="./app.js"></script>
 </body>
 </html>
