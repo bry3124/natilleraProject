@@ -115,8 +115,7 @@ input[type="text"], input[type="email"], input[type="number"], input[type="date"
     color:var(--muted);
     flex:1
 }
-
-textarea{
+.textarea{
     min-height:80px;
     padding:8px;
     border-radius:8px
@@ -130,7 +129,7 @@ textarea{
     margin-top:8px
 }
 
-/* tables */
+/* tablas */
 .table-wrap{
     overflow:auto;
     border-radius:8px;

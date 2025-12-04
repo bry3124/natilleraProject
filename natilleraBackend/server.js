@@ -185,7 +185,7 @@ app.put('/api/socios/:id', async (req, res) => {
 app.put('/api/socios/:id/estado', async (req, res) => {
   try {
     const { estado } = req.body;
-    if (!['ACTIVO','INHABILITADO'].includes(estado)) return res.status(400).json({ ok:false, error:'Estado inválido' });
+    if (!['ACTIVO', 'INHABILITADO'].includes(estado)) return res.status(400).json({ ok: false, error: 'Estado inválido' });
     const { rows } = await pool.query('UPDATE socios SET estado=$1, inhabilitado_en = (CASE WHEN $1=$2 THEN now() ELSE NULL END) WHERE id=$3 RETURNING *', [estado, 'INHABILITADO', req.params.id]);
     return res.json({ ok: true, socio: rows[0] });
   } catch (e) {
@@ -220,7 +220,7 @@ app.put('/api/pagos/:id', async (req, res) => {
 
     // guardar historial (antes)
     const antes = await pool.query('SELECT * FROM pagos WHERE id=$1', [pagoId]);
-    if (!antes.rows.length) return res.status(404).json({ ok:false, error:'Pago no encontrado' });
+    if (!antes.rows.length) return res.status(404).json({ ok: false, error: 'Pago no encontrado' });
 
     await pool.query(
       `INSERT INTO pagos_historial (pago_id, socio_id, semana, cambios, usuario)
@@ -249,11 +249,11 @@ app.post('/api/pagos', async (req, res) => {
 
     if (!socio_id || !semana) return res.status(400).json({ ok: false, error: 'Faltan socio_id o semana' });
     const sNum = Number(semana);
-    if (isNaN(sNum) || sNum < 1 || sNum > 52) return res.status(400).json({ ok:false, error:'Semana inválida (1-52)' });
+    if (isNaN(sNum) || sNum < 1 || sNum > 52) return res.status(400).json({ ok: false, error: 'Semana inválida (1-52)' });
 
     // Verificar socio existe
     const socioQ = await pool.query('SELECT id FROM socios WHERE id=$1', [socio_id]);
-    if (!socioQ.rows.length) return res.status(404).json({ ok:false, error:'Socio no encontrado' });
+    if (!socioQ.rows.length) return res.status(404).json({ ok: false, error: 'Socio no encontrado' });
 
     // Upsert: insert or update
     const q = `
@@ -308,8 +308,8 @@ app.post('/api/rifas', async (req, res) => {
     const rifa = rows[0];
     // crear 00..99 en rifa_numeros
     const inserts = [];
-    for (let i=0;i<100;i++){
-      const num = i.toString().padStart(2,'0');
+    for (let i = 0; i < 100; i++) {
+      const num = i.toString().padStart(2, '0');
       inserts.push(pool.query('INSERT INTO rifa_numeros (rifa_id, numero, precio) VALUES ($1,$2,$3)', [rifa.id, num, 20]));
     }
     await Promise.all(inserts);
@@ -324,6 +324,298 @@ app.get('/api/rifas', async (req, res) => {
     const { rows } = await pool.query('SELECT * FROM rifas ORDER BY fecha_evento DESC');
     return res.json({ ok: true, rifas: rows });
   } catch (e) { return handleError(res, e); }
+});
+
+// ----------------- EVENTOS -----------------
+app.get('/api/eventos', async (req, res) => {
+  try {
+    const { status, tipo } = req.query;
+    let q = 'SELECT * FROM eventos WHERE 1=1';
+    const params = [];
+
+    if (status) {
+      params.push(status);
+      q += ` AND estado = $${params.length}`;
+    }
+    if (tipo) {
+      params.push(tipo);
+      q += ` AND tipo = $${params.length}`;
+    }
+
+    q += ' ORDER BY fecha DESC';
+
+    const { rows } = await pool.query(q, params);
+    return res.json({ ok: true, eventos: rows });
+  } catch (e) { return handleError(res, e, 'No se pudieron listar eventos'); }
+});
+
+app.post('/api/eventos', async (req, res) => {
+  try {
+    const { nombre, descripcion, fecha, tipo, estado } = req.body;
+    if (!nombre || !fecha) {
+      return res.status(400).json({ ok: false, error: 'Faltan campos obligatorios' });
+    }
+
+    const { rows } = await pool.query(
+      `INSERT INTO eventos (nombre, descripcion, fecha, tipo, estado)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [nombre, descripcion, fecha, tipo || 'GENERAL', estado || 'UPCOMING']
+    );
+
+    return res.json({ ok: true, evento: rows[0] });
+  } catch (e) { return handleError(res, e, 'No se pudo crear evento'); }
+});
+
+app.get('/api/eventos/:id', async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT * FROM eventos WHERE id=$1', [req.params.id]);
+    if (!rows.length) return res.status(404).json({ ok: false, error: 'Evento no encontrado' });
+    return res.json({ ok: true, evento: rows[0] });
+  } catch (e) { return handleError(res, e); }
+});
+
+app.put('/api/eventos/:id', async (req, res) => {
+  try {
+    const { nombre, descripcion, fecha, tipo, estado } = req.body;
+    if (!nombre || !fecha) {
+      return res.status(400).json({ ok: false, error: 'Faltan campos obligatorios' });
+    }
+
+    const { rows } = await pool.query(
+      `UPDATE eventos SET nombre=$1, descripcion=$2, fecha=$3, tipo=$4, estado=$5, updated_at=NOW()
+       WHERE id=$6 RETURNING *`,
+      [nombre, descripcion, fecha, tipo, estado, req.params.id]
+    );
+
+    if (!rows.length) return res.status(404).json({ ok: false, error: 'Evento no encontrado' });
+    return res.json({ ok: true, evento: rows[0] });
+  } catch (e) { return handleError(res, e, 'No se pudo actualizar evento'); }
+});
+
+app.delete('/api/eventos/:id', async (req, res) => {
+  try {
+    const { rows } = await pool.query('DELETE FROM eventos WHERE id=$1 RETURNING *', [req.params.id]);
+    if (!rows.length) return res.status(404).json({ ok: false, error: 'Evento no encontrado' });
+    return res.json({ ok: true, evento: rows[0] });
+  } catch (e) { return handleError(res, e, 'No se pudo eliminar evento'); }
+});
+
+// ----------------- PRESTAMOS -----------------
+app.get('/api/prestamos', async (req, res) => {
+  try {
+    const { status, socio_id } = req.query;
+    let q = `
+      SELECT p.*, 
+             s.nombre1, s.apellido1, s.documento,
+             COALESCE(SUM(pp.monto_pago), 0) as total_pagado
+      FROM prestamos p
+      LEFT JOIN socios s ON p.socio_id = s.id
+      LEFT JOIN prestamos_pagos pp ON pp.prestamo_id = p.id
+      WHERE 1=1
+    `;
+    const params = [];
+
+    if (status) {
+      params.push(status);
+      q += ` AND p.estado = $${params.length}`;
+    }
+    if (socio_id) {
+      params.push(socio_id);
+      q += ` AND p.socio_id = $${params.length}`;
+    }
+
+    q += ' GROUP BY p.id, s.nombre1, s.apellido1, s.documento ORDER BY p.created_at DESC';
+
+    const { rows } = await pool.query(q, params);
+    return res.json({ ok: true, prestamos: rows });
+  } catch (e) { return handleError(res, e, 'No se pudieron listar préstamos'); }
+});
+
+app.post('/api/prestamos', async (req, res) => {
+  try {
+    const { socio_id, monto, tasa_interes, plazo_meses, fecha_vencimiento, observaciones } = req.body;
+
+    if (!socio_id || !monto) {
+      return res.status(400).json({ ok: false, error: 'Faltan campos obligatorios' });
+    }
+
+    // Verify socio exists
+    const socioQ = await pool.query('SELECT id FROM socios WHERE id=$1', [socio_id]);
+    if (!socioQ.rows.length) {
+      return res.status(404).json({ ok: false, error: 'Socio no encontrado' });
+    }
+
+    // Auto-set fecha_aprobacion to current date
+    const today = new Date();
+    const fechaAprobacion = today.toISOString().split('T')[0];
+
+    // Auto-calculate fecha_vencimiento if not provided
+    let fechaVencimiento = fecha_vencimiento;
+    if (!fechaVencimiento && plazo_meses) {
+      const vencimiento = new Date(today);
+      vencimiento.setMonth(vencimiento.getMonth() + parseInt(plazo_meses || 12));
+      fechaVencimiento = vencimiento.toISOString().split('T')[0];
+    }
+
+    // Calculate monto_total with interest (simple interest formula)
+    // Formula: monto_total = monto * (1 + tasa_interes/100)
+    const tasaDecimal = parseFloat(tasa_interes || 0) / 100;
+    const montoTotal = parseFloat(monto) * (1 + tasaDecimal);
+
+    const { rows } = await pool.query(
+      `INSERT INTO prestamos (socio_id, monto, tasa_interes, plazo_meses, fecha_aprobacion, fecha_vencimiento, monto_total, observaciones)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [socio_id, monto, tasa_interes || 0, plazo_meses || 12, fechaAprobacion, fechaVencimiento, montoTotal, observaciones]
+    );
+
+    return res.json({ ok: true, prestamo: rows[0] });
+  } catch (e) { return handleError(res, e, 'No se pudo crear préstamo'); }
+});
+
+app.get('/api/prestamos/:id', async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT p.*, 
+             s.nombre1, s.apellido1, s.documento,
+             COALESCE(SUM(pp.monto_pago), 0) as total_pagado
+      FROM prestamos p
+      LEFT JOIN socios s ON p.socio_id = s.id
+      LEFT JOIN prestamos_pagos pp ON pp.prestamo_id = p.id
+      WHERE p.id=$1
+      GROUP BY p.id, s.nombre1, s.apellido1, s.documento
+    `, [req.params.id]);
+
+    if (!rows.length) return res.status(404).json({ ok: false, error: 'Préstamo no encontrado' });
+    return res.json({ ok: true, prestamo: rows[0] });
+  } catch (e) { return handleError(res, e); }
+});
+
+app.put('/api/prestamos/:id', async (req, res) => {
+  try {
+    const { monto, tasa_interes, plazo_meses, fecha_aprobacion, fecha_vencimiento, estado, observaciones } = req.body;
+
+    // Recalculate monto_total with interest
+    const tasaDecimal = parseFloat(tasa_interes || 0) / 100;
+    const montoTotal = parseFloat(monto) * (1 + tasaDecimal);
+
+    const { rows } = await pool.query(
+      `UPDATE prestamos 
+       SET monto=$1, tasa_interes=$2, plazo_meses=$3, fecha_aprobacion=$4, 
+           fecha_vencimiento=$5, estado=$6, monto_total=$7, observaciones=$8, updated_at=NOW()
+       WHERE id=$9 RETURNING *`,
+      [monto, tasa_interes, plazo_meses, fecha_aprobacion, fecha_vencimiento, estado, montoTotal, observaciones, req.params.id]
+    );
+
+    if (!rows.length) return res.status(404).json({ ok: false, error: 'Préstamo no encontrado' });
+    return res.json({ ok: true, prestamo: rows[0] });
+  } catch (e) { return handleError(res, e, 'No se pudo actualizar préstamo'); }
+});
+
+app.delete('/api/prestamos/:id', async (req, res) => {
+  try {
+    console.log('🗑️  DELETE request received for prestamo ID:', req.params.id);
+
+    const { rows } = await pool.query('DELETE FROM prestamos WHERE id=$1 RETURNING *', [req.params.id]);
+
+    console.log('📊 Delete result:', rows.length > 0 ? 'SUCCESS' : 'NOT FOUND');
+    if (rows.length > 0) {
+      console.log('✅ Deleted prestamo:', rows[0].id, '-', rows[0].monto);
+    }
+
+    if (!rows.length) return res.status(404).json({ ok: false, error: 'Préstamo no encontrado' });
+    return res.json({ ok: true, prestamo: rows[0] });
+  } catch (e) {
+    console.error('❌ Error deleting prestamo:', e.message);
+    return handleError(res, e, 'No se pudo eliminar préstamo');
+  }
+});
+
+// Register payment for a loan
+app.post('/api/prestamos/:id/pagos', async (req, res) => {
+  try {
+    const { fecha_pago, monto_pago, forma_pago, observaciones } = req.body;
+
+    if (!monto_pago || monto_pago <= 0) {
+      return res.status(400).json({ ok: false, error: 'Monto de pago requerido y debe ser mayor a 0' });
+    }
+
+    // Auto-set fecha_pago to current date if not provided
+    const fechaPagoFinal = fecha_pago || new Date().toISOString().split('T')[0];
+
+    const { rows } = await pool.query(
+      `INSERT INTO prestamos_pagos (prestamo_id, fecha_pago, monto_pago, forma_pago, observaciones)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [req.params.id, fechaPagoFinal, monto_pago, forma_pago, observaciones]
+    );
+
+    return res.json({ ok: true, pago: rows[0] });
+  } catch (e) { return handleError(res, e, 'No se pudo registrar pago'); }
+});
+
+// Get payments for a loan
+app.get('/api/prestamos/:id/pagos', async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      'SELECT * FROM prestamos_pagos WHERE prestamo_id=$1 ORDER BY fecha_pago DESC',
+      [req.params.id]
+    );
+    return res.json({ ok: true, pagos: rows });
+  } catch (e) { return handleError(res, e); }
+});
+
+// ----------------- DASHBOARD -----------------
+app.get('/api/dashboard/summary', async (req, res) => {
+  try {
+    // Get random 5-10 socios
+    const randomCount = Math.floor(Math.random() * 6) + 5; // 5 to 10
+    const sociosRes = await pool.query(`
+      SELECT s.*, COALESCE(SUM(p.valor), 0) as total_ahorrado
+      FROM socios s
+      LEFT JOIN pagos p ON p.socio_id = s.id
+      WHERE s.estado = 'ACTIVO'
+      GROUP BY s.id
+      ORDER BY RANDOM()
+      LIMIT $1
+    `, [randomCount]);
+
+    // Get last 5 eventos
+    const eventosRes = await pool.query(`
+      SELECT * FROM eventos
+      ORDER BY fecha DESC, created_at DESC
+      LIMIT 5
+    `);
+
+    // Get random pending prestamos
+    const prestamosRes = await pool.query(`
+      SELECT p.*, 
+             s.nombre1, s.apellido1, s.documento,
+             COALESCE(SUM(pp.monto_pago), 0) as total_pagado
+      FROM prestamos p
+      LEFT JOIN socios s ON p.socio_id = s.id
+      LEFT JOIN prestamos_pagos pp ON pp.prestamo_id = p.id
+      WHERE p.estado = 'PENDIENTE'
+      GROUP BY p.id, s.nombre1, s.apellido1, s.documento
+      ORDER BY RANDOM()
+      LIMIT 10
+    `);
+
+    // Get stats
+    const statsRes = await pool.query(`
+      SELECT 
+        (SELECT COUNT(*) FROM socios WHERE estado = 'ACTIVO') as total_socios,
+        (SELECT COUNT(*) FROM eventos WHERE estado = 'UPCOMING') as eventos_proximos,
+        (SELECT COUNT(*) FROM prestamos WHERE estado = 'PENDIENTE') as prestamos_pendientes,
+        (SELECT COALESCE(SUM(valor), 0) FROM pagos WHERE estado = 'PAGADO') as total_ahorrado
+    `);
+
+    return res.json({
+      ok: true,
+      socios: sociosRes.rows,
+      eventos: eventosRes.rows,
+      prestamos: prestamosRes.rows,
+      stats: statsRes.rows[0]
+    });
+  } catch (e) { return handleError(res, e, 'No se pudo obtener resumen del dashboard'); }
 });
 
 // ----------------- START -----------------
