@@ -242,6 +242,10 @@ function createEmptyState(icon, title, description, action = null) {
 
 // ========== Table Utilities ==========
 function createTable(columns, data, actions = []) {
+    // Responsive wrapper
+    const responsiveWrapper = document.createElement('div');
+    responsiveWrapper.className = 'table-responsive';
+
     const container = document.createElement('div');
     container.className = 'table-container';
 
@@ -303,5 +307,6 @@ function createTable(columns, data, actions = []) {
     table.appendChild(tbody);
 
     container.appendChild(table);
-    return container;
+    responsiveWrapper.appendChild(container);
+    return responsiveWrapper;
 }
