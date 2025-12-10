@@ -77,7 +77,6 @@ async function renderPrestamos() {
                 <option value="APROBADO">Aprobado</option>
                 <option value="PAGADO">Pagado</option>
                 <option value="VENCIDO">Vencido</option>
-                <option value="CANCELADO">Cancelado</option>
               </select>
             </div>
           </div>
@@ -106,7 +105,6 @@ async function renderPrestamos() {
               <option value="APROBADO">Aprobados</option>
               <option value="PAGADO">Pagados</option>
               <option value="VENCIDO">Vencidos</option>
-              <option value="CANCELADO">Cancelados</option>
             </select>
           </div>
         </div>
@@ -262,8 +260,7 @@ function renderPrestamosTable() {
             'PENDIENTE': 'badge-warning',
             'APROBADO': 'badge-accent',
             'PAGADO': 'badge-success',
-            'VENCIDO': 'badge-danger',
-            'CANCELADO': 'badge-danger'
+            'VENCIDO': 'badge-danger'
           };
           return `<span class="badge ${badgeMap[value] || 'badge-primary'}">${value}</span>`;
         }
@@ -469,39 +466,52 @@ async function showPagosPrestamo(prestamo) {
         </div>
       </div>
 
-      <!-- Payment Registration Form -->
-      <div id="abono-form-container" style="margin-bottom: 1.5rem; padding: 1rem; background: var(--primary-50); border-radius: var(--radius-lg); border: 2px dashed var(--primary-300);">
-        <h3 style="margin-bottom: 1rem; color: var(--primary-700);"><i class="fas fa-plus-circle"></i> Registrar Abono</h3>
-        <form id="form-abono" style="display: grid; gap: 1rem;">
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-            <div class="form-group">
-              <label class="form-label">Monto del Abono *</label>
-              <input type="number" id="abono-monto" class="form-input" min="1" step="0.01" required placeholder="Ej: 50000">
+      ${prestamo.estado === 'PAGADO' ? `
+        <!-- Loan Fully Paid Message -->
+        <div style="margin-bottom: 1.5rem; padding: 1.5rem; background: var(--success-50); border-radius: var(--radius-lg); border: 2px solid var(--success-300); text-align: center;">
+          <div style="font-size: 3rem; color: var(--success-600); margin-bottom: 0.5rem;">
+            <i class="fas fa-check-circle"></i>
+          </div>
+          <h3 style="margin-bottom: 0.5rem; color: var(--success-700);">¡Préstamo Pagado!</h3>
+          <p style="color: var(--text-secondary); margin: 0;">
+            Este préstamo ha sido pagado en su totalidad. No se pueden registrar más abonos.
+          </p>
+        </div>
+      ` : `
+        <!-- Payment Registration Form -->
+        <div id="abono-form-container" style="margin-bottom: 1.5rem; padding: 1rem; background: var(--primary-50); border-radius: var(--radius-lg); border: 2px dashed var(--primary-300);">
+          <h3 style="margin-bottom: 1rem; color: var(--primary-700);"><i class="fas fa-plus-circle"></i> Registrar Abono</h3>
+          <form id="form-abono" style="display: grid; gap: 1rem;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+              <div class="form-group">
+                <label class="form-label">Monto del Abono *</label>
+                <input type="number" id="abono-monto" class="form-input" min="1" step="0.01" required placeholder="Ej: 50000">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Fecha de Pago</label>
+                <input type="date" id="abono-fecha" class="form-input" value="${new Date().toISOString().split('T')[0]}">
+              </div>
             </div>
             <div class="form-group">
-              <label class="form-label">Fecha de Pago</label>
-              <input type="date" id="abono-fecha" class="form-input" value="${new Date().toISOString().split('T')[0]}">
+              <label class="form-label">Forma de Pago</label>
+              <select id="abono-forma" class="form-select">
+                <option value="">-- Seleccione --</option>
+                <option value="EFECTIVO">Efectivo</option>
+                <option value="TRANSFERENCIA">Bancolombia</option>
+                <option value="NEQUI">Nequi</option>
+                <option value="OTRO">Otro</option>
+              </select>
             </div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Forma de Pago</label>
-            <select id="abono-forma" class="form-select">
-              <option value="">-- Seleccione --</option>
-              <option value="EFECTIVO">Efectivo</option>
-              <option value="TRANSFERENCIA">Bancolombia</option>
-              <option value="CHEQUE">Nequi</option>
-              <option value="OTRO">Otro</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Observaciones</label>
-            <textarea id="abono-observaciones" class="form-textarea" rows="2" placeholder="Notas adicionales..."></textarea>
-          </div>
-          <button type="submit" class="btn btn-primary" style="width: 100%;">
-            <i class="fas fa-save"></i> Guardar Abono
-          </button>
-        </form>
-      </div>
+            <div class="form-group">
+              <label class="form-label">Observaciones</label>
+              <textarea id="abono-observaciones" class="form-textarea" rows="2" placeholder="Notas adicionales..."></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%;">
+              <i class="fas fa-save"></i> Guardar Abono
+            </button>
+          </form>
+        </div>
+      `}
       
       <h3 style="margin-bottom: 1rem;">Historial de Pagos</h3>
       <div id="pagos-list" style="max-height: 300px; overflow-y: auto;">
@@ -531,7 +541,7 @@ async function showPagosPrestamo(prestamo) {
       [{ text: 'Cerrar', className: 'btn-secondary' }]
     );
 
-    // Add event listener for abono form
+    // Add event listener for abono form (only if loan is not fully paid)
     const abonoForm = content.querySelector('#form-abono');
     if (abonoForm) {
       abonoForm.addEventListener('submit', async (e) => {

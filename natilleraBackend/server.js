@@ -3,6 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
+const { sendWeeklyPaymentEmail, sendLoanPaymentEmail } = require('./emailService');
 
 const app = express();
 app.use(cors());
@@ -234,7 +235,21 @@ app.put('/api/pagos/:id', async (req, res) => {
       [fecha_pago || null, forma_pago || null, valor || null, nombre_pagador || null, firma_recibe || null, estado || antes.rows[0].estado, pagoId]
     );
 
-    return res.json({ ok: true, pago: rows[0] });
+    const pago = rows[0];
+
+    // Send email notification if payment was successful and has value
+    if (pago.estado === 'PAGADO' && pago.valor && pago.valor > 0) {
+      // Get socio information
+      const socioRes = await pool.query('SELECT * FROM socios WHERE id=$1', [pago.socio_id]);
+      if (socioRes.rows.length > 0 && socioRes.rows[0].correo) {
+        // Send email asynchronously (don't wait for it)
+        sendWeeklyPaymentEmail(socioRes.rows[0], pago).catch(err => {
+          console.error('Error sending payment email:', err);
+        });
+      }
+    }
+
+    return res.json({ ok: true, pago });
   } catch (e) {
     return handleError(res, e, 'No se pudo actualizar pago');
   }
@@ -539,6 +554,23 @@ app.post('/api/prestamos/:id/pagos', async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Monto de pago requerido y debe ser mayor a 0' });
     }
 
+    // Check if loan is already fully paid
+    const loanCheck = await pool.query(
+      'SELECT estado FROM prestamos WHERE id = $1',
+      [req.params.id]
+    );
+
+    if (!loanCheck.rows.length) {
+      return res.status(404).json({ ok: false, error: 'Préstamo no encontrado' });
+    }
+
+    if (loanCheck.rows[0].estado === 'PAGADO') {
+      return res.status(400).json({
+        ok: false,
+        error: 'Este préstamo ya ha sido pagado en su totalidad. No se pueden registrar más abonos.'
+      });
+    }
+
     // Auto-set fecha_pago to current date if not provided
     const fechaPagoFinal = fecha_pago || new Date().toISOString().split('T')[0];
 
@@ -547,6 +579,47 @@ app.post('/api/prestamos/:id/pagos', async (req, res) => {
        VALUES ($1, $2, $3, $4, $5) RETURNING *`,
       [req.params.id, fechaPagoFinal, monto_pago, forma_pago, observaciones]
     );
+
+    // Check if loan is fully paid and update status to PAGADO
+    const prestamoRes = await pool.query(`
+      SELECT p.*, s.nombre1, s.apellido1, s.correo, s.documento,
+             COALESCE(SUM(pp.monto_pago), 0) as total_pagado
+      FROM prestamos p
+      LEFT JOIN socios s ON p.socio_id = s.id
+      LEFT JOIN prestamos_pagos pp ON pp.prestamo_id = p.id
+      WHERE p.id = $1
+      GROUP BY p.id, s.nombre1, s.apellido1, s.correo, s.documento
+    `, [req.params.id]);
+
+    if (prestamoRes.rows.length > 0) {
+      const prestamo = prestamoRes.rows[0];
+      const montoTotal = Number(prestamo.monto_total || prestamo.monto);
+      const totalPagado = Number(prestamo.total_pagado);
+
+      // If the loan is fully paid, update status to PAGADO
+      if (totalPagado >= montoTotal) {
+        await pool.query(
+          `UPDATE prestamos SET estado = 'PAGADO', updated_at = NOW() WHERE id = $1`,
+          [req.params.id]
+        );
+        prestamo.estado = 'PAGADO'; // Update local object for email
+      }
+
+      // Send email notification if socio has email
+      if (prestamo.correo) {
+        const socio = {
+          nombre1: prestamo.nombre1,
+          apellido1: prestamo.apellido1,
+          correo: prestamo.correo,
+          documento: prestamo.documento
+        };
+
+        // Send email asynchronously (don't wait for it)
+        sendLoanPaymentEmail(socio, prestamo, rows[0]).catch(err => {
+          console.error('Error sending loan payment email:', err);
+        });
+      }
+    }
 
     return res.json({ ok: true, pago: rows[0] });
   } catch (e) { return handleError(res, e, 'No se pudo registrar pago'); }

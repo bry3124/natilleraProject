@@ -1,0 +1,345 @@
+// Email Service Module
+const nodemailer = require('nodemailer');
+require('dotenv').config();
+
+// Create transporter
+const transporter = nodemailer.createTransport({
+  service: process.env.EMAIL_SERVICE || 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
+  }
+});
+
+// Verify transporter configuration
+transporter.verify((error, success) => {
+  if (error) {
+    console.log('❌ Email service configuration error:', error.message);
+  } else {
+    console.log('✅ Email service ready to send messages');
+  }
+});
+
+// Helper function to format currency
+function formatCurrency(amount) {
+  return new Intl.NumberFormat('es-CO', {
+    style: 'currency',
+    currency: 'COP',
+    minimumFractionDigits: 0
+  }).format(amount);
+}
+
+// Helper function to format date
+function formatDate(date) {
+  return new Date(date).toLocaleDateString('es-CO', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+}
+
+// Professional email template
+function getEmailTemplate(content) {
+  return `
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Confirmación de Pago - Natillera MiAhorro</title>
+    </head>
+    <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7fb;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f7fb; padding: 20px 0;">
+        <tr>
+          <td align="center">
+            <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+              
+              <!-- Header -->
+              <tr>
+                <td style="background: linear-gradient(135deg, #0A2342 0%, #063048 100%); padding: 30px 40px; text-align: center;">
+                  <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">
+                    🏦 Natillera MiAhorro
+                  </h1>
+                  <p style="margin: 10px 0 0 0; color: #0CC0DF; font-size: 14px; font-weight: 500;">
+                    Sistema de Gestión de Socios
+                  </p>
+                </td>
+              </tr>
+
+              <!-- Content -->
+              <tr>
+                <td style="padding: 40px;">
+                  ${content}
+                </td>
+              </tr>
+
+              <!-- Footer -->
+              <tr>
+                <td style="background-color: #f8fafc; padding: 30px 40px; text-align: center; border-top: 1px solid #e2e8f0;">
+                  <p style="margin: 0 0 10px 0; color: #64748b; font-size: 14px;">
+                    Este es un correo automático, por favor no responder.
+                  </p>
+                  <p style="margin: 0; color: #94a3b8; font-size: 12px;">
+                    © ${new Date().getFullYear()} Natillera MiAhorro - Todos los derechos reservados
+                  </p>
+                </td>
+              </tr>
+
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+}
+
+// Send weekly payment confirmation email
+async function sendWeeklyPaymentEmail(socio, payment) {
+  const content = `
+    <div style="text-align: center; margin-bottom: 30px;">
+      <div style="display: inline-block; background-color: #10b981; color: white; padding: 12px 24px; border-radius: 50px; font-size: 16px; font-weight: 600;">
+        ✓ Pago Confirmado
+      </div>
+    </div>
+
+    <h2 style="color: #0A2342; margin: 0 0 10px 0; font-size: 22px;">
+      ¡Hola ${socio.nombre1} ${socio.apellido1}!
+    </h2>
+    
+    <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 30px 0;">
+      Hemos recibido exitosamente tu pago semanal. A continuación encontrarás los detalles de tu transacción:
+    </p>
+
+    <!-- Payment Details Card -->
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; border-radius: 8px; overflow: hidden; margin-bottom: 30px;">
+      <tr>
+        <td style="padding: 20px;">
+          <table width="100%" cellpadding="8" cellspacing="0">
+            <tr>
+              <td style="color: #64748b; font-size: 14px; padding: 8px 0;">
+                <strong>Semana:</strong>
+              </td>
+              <td style="color: #0A2342; font-size: 14px; text-align: right; padding: 8px 0;">
+                Semana ${payment.semana}
+              </td>
+            </tr>
+            <tr style="border-top: 1px solid #e2e8f0;">
+              <td style="color: #64748b; font-size: 14px; padding: 8px 0;">
+                <strong>Monto Pagado:</strong>
+              </td>
+              <td style="color: #10b981; font-size: 18px; font-weight: 700; text-align: right; padding: 8px 0;">
+                ${formatCurrency(payment.valor)}
+              </td>
+            </tr>
+            <tr style="border-top: 1px solid #e2e8f0;">
+              <td style="color: #64748b; font-size: 14px; padding: 8px 0;">
+                <strong>Fecha de Pago:</strong>
+              </td>
+              <td style="color: #0A2342; font-size: 14px; text-align: right; padding: 8px 0;">
+                ${formatDate(payment.fecha_pago)}
+              </td>
+            </tr>
+            ${payment.forma_pago ? `
+            <tr style="border-top: 1px solid #e2e8f0;">
+              <td style="color: #64748b; font-size: 14px; padding: 8px 0;">
+                <strong>Forma de Pago:</strong>
+              </td>
+              <td style="color: #0A2342; font-size: 14px; text-align: right; padding: 8px 0;">
+                ${formatPaymentMethod(payment.forma_pago)}
+              </td>
+            </tr>
+            ` : ''}
+            ${payment.nombre_pagador ? `
+            <tr style="border-top: 1px solid #e2e8f0;">
+              <td style="color: #64748b; font-size: 14px; padding: 8px 0;">
+                <strong>Pagador:</strong>
+              </td>
+              <td style="color: #0A2342; font-size: 14px; text-align: right; padding: 8px 0;">
+                ${payment.nombre_pagador}
+              </td>
+            </tr>
+            ` : ''}
+            ${payment.firma_recibe ? `
+            <tr style="border-top: 1px solid #e2e8f0;">
+              <td style="color: #64748b; font-size: 14px; padding: 8px 0;">
+                <strong>Recibido por:</strong>
+              </td>
+              <td style="color: #0A2342; font-size: 14px; text-align: right; padding: 8px 0;">
+                ${payment.firma_recibe}
+              </td>
+            </tr>
+            ` : ''}
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    <p style="color: #475569; font-size: 14px; line-height: 1.6; margin: 0;">
+      Gracias por tu puntualidad y compromiso con la Natillera. Si tienes alguna pregunta sobre este pago, no dudes en contactarnos.
+    </p>
+  `;
+
+  const mailOptions = {
+    from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+    to: socio.correo,
+    subject: `✓ Confirmación de Pago - Semana ${payment.semana}`,
+    html: getEmailTemplate(content)
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log('✅ Email sent to:', socio.correo, '- Message ID:', info.messageId);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('❌ Error sending email to:', socio.correo, '- Error:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+// Helper function to format payment method
+function formatPaymentMethod(method) {
+  const methodMap = {
+    'EFECTIVO': 'Efectivo',
+    'TRANSFERENCIA': 'Bancolombia',
+    'NEQUI': 'Nequi',
+    'OTRO': 'Otro'
+  };
+  return methodMap[method] || method;
+}
+
+// Send loan payment confirmation email
+async function sendLoanPaymentEmail(socio, prestamo, pago) {
+  const montoTotal = Number(prestamo.monto_total || prestamo.monto);
+  const totalPagado = Number(prestamo.total_pagado || 0); // Already includes current payment from DB
+  const saldoPendiente = montoTotal - totalPagado;
+  const porcentajePagado = ((totalPagado / montoTotal) * 100).toFixed(1);
+
+  const content = `
+    <div style="text-align: center; margin-bottom: 30px;">
+      <div style="display: inline-block; background-color: #10b981; color: white; padding: 12px 24px; border-radius: 50px; font-size: 16px; font-weight: 600;">
+        ✓ Abono Registrado
+      </div>
+    </div>
+
+    <h2 style="color: #0A2342; margin: 0 0 10px 0; font-size: 22px;">
+      ¡Hola ${socio.nombre1} ${socio.apellido1}!
+    </h2>
+    
+    <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 30px 0;">
+      Hemos registrado exitosamente tu abono al préstamo. A continuación encontrarás los detalles:
+    </p>
+
+    <!-- Payment Details Card -->
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; border-radius: 8px; overflow: hidden; margin-bottom: 20px;">
+      <tr>
+        <td style="padding: 20px;">
+          <table width="100%" cellpadding="8" cellspacing="0">
+            <tr>
+              <td style="color: #64748b; font-size: 14px; padding: 8px 0;">
+                <strong>Monto del Abono:</strong>
+              </td>
+              <td style="color: #10b981; font-size: 18px; font-weight: 700; text-align: right; padding: 8px 0;">
+                ${formatCurrency(pago.monto_pago)}
+              </td>
+            </tr>
+            <tr style="border-top: 1px solid #e2e8f0;">
+              <td style="color: #64748b; font-size: 14px; padding: 8px 0;">
+                <strong>Fecha de Pago:</strong>
+              </td>
+              <td style="color: #0A2342; font-size: 14px; text-align: right; padding: 8px 0;">
+                ${formatDate(pago.fecha_pago)}
+              </td>
+            </tr>
+            ${pago.forma_pago ? `
+            <tr style="border-top: 1px solid #e2e8f0;">
+              <td style="color: #64748b; font-size: 14px; padding: 8px 0;">
+                <strong>Forma de Pago:</strong>
+              </td>
+              <td style="color: #0A2342; font-size: 14px; text-align: right; padding: 8px 0;">
+                ${formatPaymentMethod(pago.forma_pago)}
+              </td>
+            </tr>
+            ` : ''}
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Loan Summary Card -->
+    <table width="100%" cellpadding="0" cellspacing="0" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border-radius: 8px; overflow: hidden; margin-bottom: 30px;">
+      <tr>
+        <td style="padding: 20px;">
+          <h3 style="color: #0A2342; margin: 0 0 15px 0; font-size: 16px;">
+            📊 Resumen del Préstamo
+          </h3>
+          <table width="100%" cellpadding="6" cellspacing="0">
+            <tr>
+              <td style="color: #475569; font-size: 14px;">Monto Total:</td>
+              <td style="color: #0A2342; font-size: 14px; text-align: right; font-weight: 600;">
+                ${formatCurrency(montoTotal)}
+              </td>
+            </tr>
+            <tr>
+              <td style="color: #475569; font-size: 14px;">Total Pagado:</td>
+              <td style="color: #10b981; font-size: 14px; text-align: right; font-weight: 600;">
+                ${formatCurrency(totalPagado)}
+              </td>
+            </tr>
+            <tr>
+              <td style="color: #475569; font-size: 14px;">Saldo Pendiente:</td>
+              <td style="color: ${saldoPendiente > 0 ? '#f59e0b' : '#10b981'}; font-size: 16px; text-align: right; font-weight: 700;">
+                ${formatCurrency(saldoPendiente)}
+              </td>
+            </tr>
+          </table>
+          
+          <!-- Progress Bar -->
+          <div style="margin-top: 15px;">
+            <div style="background-color: #e2e8f0; height: 10px; border-radius: 5px; overflow: hidden;">
+              <div style="background: linear-gradient(90deg, #10b981 0%, #059669 100%); height: 100%; width: ${porcentajePagado}%;"></div>
+            </div>
+            <p style="text-align: center; margin: 8px 0 0 0; color: #64748b; font-size: 13px;">
+              ${porcentajePagado}% completado
+            </p>
+          </div>
+        </td>
+      </tr>
+    </table>
+
+    ${saldoPendiente <= 0 ? `
+    <div style="background-color: #d1fae5; border-left: 4px solid #10b981; padding: 15px; border-radius: 4px; margin-bottom: 20px;">
+      <p style="margin: 0; color: #065f46; font-size: 14px; font-weight: 600;">
+        🎉 ¡Felicitaciones! Has completado el pago de tu préstamo.
+      </p>
+    </div>
+    ` : ''}
+
+    <p style="color: #475569; font-size: 14px; line-height: 1.6; margin: 0;">
+      Gracias por tu compromiso con la Natillera. Si tienes alguna pregunta sobre este abono, no dudes en contactarnos.
+    </p>
+  `;
+
+  const mailOptions = {
+    from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+    to: socio.correo,
+    subject: saldoPendiente <= 0
+      ? '🎉 Préstamo Completado - Confirmación de Pago Final'
+      : `✓ Confirmación de Abono - ${formatCurrency(pago.monto_pago)}`,
+    html: getEmailTemplate(content)
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log('✅ Email sent to:', socio.correo, '- Message ID:', info.messageId);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('❌ Error sending email to:', socio.correo, '- Error:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+module.exports = {
+  sendWeeklyPaymentEmail,
+  sendLoanPaymentEmail
+};
