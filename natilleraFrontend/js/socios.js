@@ -329,48 +329,61 @@ async function showPagosModal(socio) {
 }
 
 async function openPagoRegistrationModal(socio, pago, semana) {
+  const isPaid = pago.estado === 'PAGADO' && pago.valor && pago.valor > 0;
   const formContent = document.createElement('div');
+
   formContent.innerHTML = `
     <form id="form-registro-pago">
       <div style="margin-bottom: 1rem; padding: 1rem; background: var(--neutral-50); border-radius: var(--radius-lg);">
         <strong>${formatNombre(socio)}</strong> - Semana ${semana}
       </div>
       
+      ${isPaid ? `
+      <div style="margin-bottom: 1rem; padding: 1rem; background: var(--success-50); border: 1px solid var(--success-300); border-radius: var(--radius-md);">
+        <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--success-700); font-weight: 600;">
+          <i class="fas fa-check-circle"></i>
+          <span>Pago Registrado</span>
+        </div>
+        <p style="margin: 0.5rem 0 0 0; font-size: 0.875rem; color: var(--success-600);">
+          Este pago ya ha sido registrado. El valor no puede ser modificado.
+        </p>
+      </div>
+      ` : ''}
+      
       <div class="form-group">
         <label class="form-label">Fecha de Pago *</label>
-        <input type="date" id="pago-fecha" class="form-input" value="${pago.fecha_pago ? formatDateInput(pago.fecha_pago) : formatDateInput(new Date())}" required>
+        <input type="date" id="pago-fecha" class="form-input" value="${pago.fecha_pago ? formatDateInput(pago.fecha_pago) : formatDateInput(new Date())}" ${isPaid ? 'readonly' : ''} required>
       </div>
       
       <div class="form-group">
         <label class="form-label">Forma de Pago</label>
-        <select id="pago-forma" class="form-select">
+        <select id="pago-forma" class="form-select" ${isPaid ? 'disabled' : ''}>
           <option value="">-- Seleccione --</option>
           <option value="EFECTIVO" ${pago.forma_pago === 'EFECTIVO' ? 'selected' : ''}>Efectivo</option>
           <option value="NEQUI" ${pago.forma_pago === 'NEQUI' ? 'selected' : ''}>Nequi</option>
           <option value="BANCOLOMBIA" ${pago.forma_pago === 'BANCOLOMBIA' ? 'selected' : ''}>Bancolombia</option>
-          <option value="DAVIPLATA" ${pago.forma_pago === 'DAVIPLATA' ? 'selected' : ''}>Daviplata</option>
-          <option value="TRANSFERENCIA" ${pago.forma_pago === 'TRANSFERENCIA' ? 'selected' : ''}>Transferencia</option>
         </select>
       </div>
       
       <div class="form-group">
         <label class="form-label">Valor Aportado *</label>
-        <input type="number" id="pago-valor" class="form-input" min="0" step="1000" value="${pago.valor || ''}" required>
+        <input type="number" id="pago-valor" class="form-input" min="0" step="1000" value="${pago.valor || ''}" ${isPaid ? 'readonly' : ''} required>
+        ${isPaid ? '<small style="color: var(--text-tertiary); font-size: 0.75rem;"><i class="fas fa-lock"></i> El valor no puede modificarse una vez registrado</small>' : ''}
       </div>
       
       <div class="form-group">
         <label class="form-label">Nombre Persona que Paga *</label>
-        <input type="text" id="pago-nombre-pagador" class="form-input" value="${pago.nombre_pagador || formatNombre(socio)}" required>
+        <input type="text" id="pago-nombre-pagador" class="form-input" value="${pago.nombre_pagador || formatNombre(socio)}" ${isPaid ? 'readonly' : ''} required>
       </div>
       
       <div class="form-group">
         <label class="form-label">Nombre Persona que Recibe *</label>
-        <input type="text" id="pago-firma-recibe" class="form-input" value="${pago.firma_recibe || ''}" required>
+        <input type="text" id="pago-firma-recibe" class="form-input" value="${pago.firma_recibe || ''}" ${isPaid ? 'readonly' : ''} required>
       </div>
       
       <div class="form-group">
         <label class="form-label">Estado</label>
-        <select id="pago-estado" class="form-select">
+        <select id="pago-estado" class="form-select" ${isPaid ? 'disabled' : ''}>
           <option value="PENDIENTE" ${pago.estado === 'PENDIENTE' ? 'selected' : ''}>Pendiente</option>
           <option value="PAGADO" ${pago.estado === 'PAGADO' ? 'selected' : ''}>Pagado</option>
           <option value="ANULADO" ${pago.estado === 'ANULADO' ? 'selected' : ''}>Anulado</option>
@@ -379,52 +392,94 @@ async function openPagoRegistrationModal(socio, pago, semana) {
     </form>
   `;
 
-  const modal = createModal(
-    `Registrar Pago - Semana ${semana}`,
-    formContent,
-    [
-      { text: 'Cancelar', className: 'btn-secondary' },
-      {
-        text: 'Guardar Pago',
-        className: 'btn-primary',
-        closeOnClick: false,
-        onClick: async () => {
-          const fecha = document.getElementById('pago-fecha').value;
-          const forma = document.getElementById('pago-forma').value;
-          const valor = document.getElementById('pago-valor').value;
-          const nombrePagador = document.getElementById('pago-nombre-pagador').value;
-          const firmaRecibe = document.getElementById('pago-firma-recibe').value;
-          const estado = document.getElementById('pago-estado').value;
+  const buttons = isPaid ? [
+    { text: 'Cerrar', className: 'btn-secondary' }
+  ] : [
+    { text: 'Cancelar', className: 'btn-secondary' },
+    {
+      text: 'Guardar Pago',
+      className: 'btn-primary',
+      closeOnClick: false,
+      onClick: async () => {
+        const fecha = document.getElementById('pago-fecha').value;
+        const forma = document.getElementById('pago-forma').value;
+        const valor = document.getElementById('pago-valor').value;
+        const nombrePagador = document.getElementById('pago-nombre-pagador').value;
+        const firmaRecibe = document.getElementById('pago-firma-recibe').value;
+        const estado = document.getElementById('pago-estado').value;
 
-          if (!fecha || !valor || !nombrePagador || !firmaRecibe) {
-            showToast('Por favor complete todos los campos requeridos', 'warning');
-            return;
-          }
-
-          try {
-            await apiRequest(`/pagos/${pago.id}`, {
-              method: 'PUT',
-              body: JSON.stringify({
-                fecha_pago: fecha,
-                forma_pago: forma,
-                valor: parseFloat(valor),
-                nombre_pagador: nombrePagador,
-                firma_recibe: firmaRecibe,
-                estado: estado,
-                usuario: 'Admin'
-              })
-            });
-
-            showToast('Pago registrado exitosamente', 'success');
-            closeAllModals();
-            // Reopen the payments modal to show updated data
-            setTimeout(() => showPagosModal(socio), 300);
-          } catch (error) {
-            showToast(error.message || 'Error al guardar pago', 'error');
-          }
+        if (!fecha || !valor || !nombrePagador || !firmaRecibe) {
+          showToast('Por favor complete todos los campos requeridos', 'warning');
+          return;
         }
+
+        // Confirmation message
+        const confirmContent = document.createElement('div');
+        confirmContent.innerHTML = `
+          <p style="font-size: 1rem; margin-bottom: 1rem;">
+            ¿Está seguro de registrar este pago?
+          </p>
+          <div style="background: var(--neutral-50); padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1rem;">
+            <div style="display: grid; gap: 0.5rem;">
+              <div><strong>Socio:</strong> ${formatNombre(socio)}</div>
+              <div><strong>Semana:</strong> ${semana}</div>
+              <div><strong>Valor:</strong> ${formatCurrency(parseFloat(valor))}</div>
+              <div><strong>Estado:</strong> ${estado}</div>
+            </div>
+          </div>
+          ${estado === 'PAGADO' ? `
+          <div style="background: var(--warning-50); border: 1px solid var(--warning-300); padding: 0.75rem; border-radius: var(--radius-md);">
+            <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--warning-700);">
+              <i class="fas fa-exclamation-triangle"></i>
+              <span style="font-size: 0.875rem; font-weight: 600;">Una vez marcado como PAGADO, el valor no podrá ser modificado.</span>
+            </div>
+          </div>
+          ` : ''}
+        `;
+
+        createModal(
+          'Confirmar Registro de Pago',
+          confirmContent,
+          [
+            { text: 'Cancelar', className: 'btn-secondary' },
+            {
+              text: 'Confirmar',
+              className: 'btn-primary',
+              onClick: async () => {
+                try {
+                  await apiRequest(`/pagos/${pago.id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                      fecha_pago: fecha,
+                      forma_pago: forma,
+                      valor: parseFloat(valor),
+                      nombre_pagador: nombrePagador,
+                      firma_recibe: firmaRecibe,
+                      estado: estado,
+                      usuario: 'Admin'
+                    })
+                  });
+
+                  showToast('Pago registrado exitosamente', 'success');
+                  closeAllModals();
+                  // Reopen the payments modal to show updated data
+                  setTimeout(() => showPagosModal(socio), 300);
+                } catch (error) {
+                  showToast(error.message || 'Error al guardar pago', 'error');
+                }
+              }
+            }
+          ]
+        );
       }
-    ]
+    }
+  ];
+
+  const modal = createModal(
+    isPaid ? `Ver Pago - Semana ${semana}` : `Registrar Pago - Semana ${semana}`,
+    formContent,
+    buttons
   );
 }
+
 
