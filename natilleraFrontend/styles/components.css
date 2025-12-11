@@ -274,7 +274,7 @@
 .table-container {
     background: var(--bg-secondary);
     border-radius: var(--radius-xl);
-    overflow: hidden;
+
     box-shadow: var(--shadow-md);
 }
 
@@ -646,7 +646,7 @@
 .empty-state-title {
     font-size: var(--font-size-lg);
 }
-}
+
 
 /* Small Mobile (max-width: 480px) */
 @media (max-width: 480px) {
@@ -717,4 +717,19 @@
     .btn:hover {
         transform: none;
     }
+}
+/* ========== TABLE RESPONSIVE ========== */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    max-width: 100%;
+}
+
+/* ========== TABLE RESPONSIVE ========== */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    max-width: 100%;
 }

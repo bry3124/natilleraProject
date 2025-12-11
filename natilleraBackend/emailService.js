@@ -1,5 +1,6 @@
 // Email Service Module
 const nodemailer = require('nodemailer');
+const { generarPazYSalvo } = require('./pdfService');
 require('dotenv').config();
 
 // Create transporter
@@ -210,15 +211,20 @@ function formatPaymentMethod(method) {
 
 // Send loan payment confirmation email
 async function sendLoanPaymentEmail(socio, prestamo, pago) {
-  const montoTotal = Number(prestamo.monto_total || prestamo.monto);
+  const montoTotal = Number(prestamo.monto_total) || Number(prestamo.monto);
   const totalPagado = Number(prestamo.total_pagado || 0); // Already includes current payment from DB
-  const saldoPendiente = montoTotal - totalPagado;
-  const porcentajePagado = ((totalPagado / montoTotal) * 100).toFixed(1);
+  let saldoPendiente = montoTotal - totalPagado;
+
+  // Numerical tolerance: if balance is very small (less than 1 peso), consider it zero or negative
+  if (saldoPendiente < 1) saldoPendiente = 0;
+
+  // Cap percentage at 100%
+  const porcentajePagado = Math.min(100, (totalPagado / montoTotal) * 100).toFixed(1);
 
   const content = `
     <div style="text-align: center; margin-bottom: 30px;">
       <div style="display: inline-block; background-color: #10b981; color: white; padding: 12px 24px; border-radius: 50px; font-size: 16px; font-weight: 600;">
-        ✓ Abono Registrado
+        ${saldoPendiente <= 0 ? '✓ Préstamo Cancelado' : '✓ Abono Registrado'}
       </div>
     </div>
 
@@ -309,8 +315,11 @@ async function sendLoanPaymentEmail(socio, prestamo, pago) {
 
     ${saldoPendiente <= 0 ? `
     <div style="background-color: #d1fae5; border-left: 4px solid #10b981; padding: 15px; border-radius: 4px; margin-bottom: 20px;">
-      <p style="margin: 0; color: #065f46; font-size: 14px; font-weight: 600;">
-        🎉 ¡Felicitaciones! Has completado el pago de tu préstamo.
+      <h3 style="margin: 0 0 10px 0; color: #065f46; font-size: 16px;">
+        🎉 ¡Felicitaciones! Deuda Cancelada.
+      </h3>
+      <p style="margin: 0; color: #064e3b; font-size: 14px;">
+        Adjunto a este correo encontrarás tu certificado de <strong>Paz y Salvo</strong>.
       </p>
     </div>
     ` : ''}
@@ -329,6 +338,25 @@ async function sendLoanPaymentEmail(socio, prestamo, pago) {
     html: getEmailTemplate(content)
   };
 
+  // Attach Paz y Salvo PDF if fully paid
+  if (saldoPendiente <= 0) {
+    try {
+      console.log('📄 Generando Paz y Salvo para préstamo:', prestamo.id);
+      const pdfBuffer = await generarPazYSalvo(socio, prestamo);
+      mailOptions.attachments = [
+        {
+          filename: `PazYSalvo_Prestamo_${prestamo.id}.pdf`,
+          content: pdfBuffer,
+          contentType: 'application/pdf'
+        }
+      ];
+      console.log('✅ Paz y Salvo generado y adjuntado.');
+    } catch (pdfError) {
+      console.error('❌ Error generando PDF Paz y Salvo:', pdfError);
+      // We continue sending the email even if PDF fails, but we log the error
+    }
+  }
+
   try {
     const info = await transporter.sendMail(mailOptions);
     console.log('✅ Email sent to:', socio.correo, '- Message ID:', info.messageId);
@@ -339,7 +367,76 @@ async function sendLoanPaymentEmail(socio, prestamo, pago) {
   }
 }
 
+// Email for new loan creation - Security Alert
+async function sendLoanCreationEmail(socio, prestamo) {
+  if (!socio.correo) {
+    console.log(`⚠️ No email address for socio ${socio.nombre1} ${socio.apellido1 || ''}, skipping creation email`);
+    return;
+  }
+
+  const currentDate = formatDate(new Date());
+
+  const htmlContent = getEmailTemplate(`
+    <div class="content-block">
+      <h2>¡Nuevo Préstamo Registrado!</h2>
+      <p>Hola <strong>${socio.nombre1} ${socio.apellido1 || ''}</strong>,</p>
+      <p>Te informamos que se ha registrado exitosamente una solicitud de préstamo a tu nombre en nuestra Natillera.</p>
+    </div>
+
+    <div class="details-table">
+      <table>
+        <tr>
+          <td width="40%" style="color: #666;">Monto Solicitado:</td>
+          <td><strong>${formatCurrency(prestamo.monto)}</strong></td>
+        </tr>
+        <tr>
+          <td style="color: #666;">Fecha de Solicitud:</td>
+          <td>${formatDate(prestamo.fecha_aprobacion || new Date())}</td>
+        </tr>
+        <tr>
+          <td style="color: #666;">Plazo:</td>
+          <td>${prestamo.plazo_meses} meses</td>
+        </tr>
+        <tr>
+          <td style="color: #666;">Tasa de Interés:</td>
+          <td>${prestamo.tasa_interes}%</td>
+        </tr>
+        <tr>
+          <td style="color: #666;">Total a Pagar:</td>
+          <td><strong>${formatCurrency(prestamo.monto_total)}</strong></td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="content-block warning-box" style="background-color: #fff3cd; border: 1px solid #ffeeba; color: #856404; padding: 15px; border-radius: 5px; margin-top: 20px;">
+      <p style="margin: 0; font-weight: bold;">⚠️ Alerta de Seguridad</p>
+      <p style="margin: 5px 0 0;">Si tú NO has realizado esta solicitud, por favor comunícate inmediatamente con los administradores de la natillera para reportar este incidente.</p>
+    </div>
+
+    <div class="content-block" style="text-align: center; margin-top: 20px;">
+      <p style="font-size: 0.9em; color: #666;">Este es un mensaje automático de seguridad.</p>
+    </div>
+  `);
+
+  const mailOptions = {
+    from: process.env.EMAIL_FROM || '"Natillera MiAhorro" <noreply@natillera.com>',
+    to: socio.correo,
+    subject: '🔔 Nuevo Préstamo Registrado - Natillera MiAhorro',
+    html: htmlContent
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`✅ Loan creation email sent to ${socio.correo}: ${info.messageId}`);
+    return info;
+  } catch (error) {
+    console.error('❌ Error sending loan creation email:', error.message);
+    throw error;
+  }
+}
+
 module.exports = {
   sendWeeklyPaymentEmail,
-  sendLoanPaymentEmail
+  sendLoanPaymentEmail,
+  sendLoanCreationEmail
 };

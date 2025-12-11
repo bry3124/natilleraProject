@@ -3,7 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
-const { sendWeeklyPaymentEmail, sendLoanPaymentEmail } = require('./emailService');
+const { sendWeeklyPaymentEmail, sendLoanPaymentEmail, sendLoanCreationEmail } = require('./emailService');
 
 const app = express();
 app.use(cors());
@@ -483,7 +483,21 @@ app.post('/api/prestamos', async (req, res) => {
       [socio_id, monto, tasa_interes || 0, plazo_meses || 12, fechaAprobacion, fechaVencimiento, montoTotal, observaciones]
     );
 
-    return res.json({ ok: true, prestamo: rows[0] });
+    const prestamo = rows[0];
+
+    // Notification Logic (Non-blocking)
+    (async () => {
+      try {
+        const socioResult = await pool.query('SELECT * FROM socios WHERE id = $1', [socio_id]);
+        if (socioResult.rows.length > 0) {
+          await sendLoanCreationEmail(socioResult.rows[0], prestamo);
+        }
+      } catch (err) {
+        console.error('⚠️ Failed to send loan creation email (background):', err.message);
+      }
+    })();
+
+    return res.json({ ok: true, prestamo });
   } catch (e) { return handleError(res, e, 'No se pudo crear préstamo'); }
 });
 
@@ -554,20 +568,35 @@ app.post('/api/prestamos/:id/pagos', async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Monto de pago requerido y debe ser mayor a 0' });
     }
 
-    // Check if loan is already fully paid
-    const loanCheck = await pool.query(
-      'SELECT estado FROM prestamos WHERE id = $1',
-      [req.params.id]
-    );
+    // Check if loan is already fully paid and validate amount
+    const loanCheck = await pool.query(`
+      SELECT p.estado, p.monto_total, COALESCE(SUM(pp.monto_pago), 0) as total_pagado
+      FROM prestamos p
+      LEFT JOIN prestamos_pagos pp ON pp.prestamo_id = p.id
+      WHERE p.id = $1
+      GROUP BY p.id
+    `, [req.params.id]);
 
     if (!loanCheck.rows.length) {
       return res.status(404).json({ ok: false, error: 'Préstamo no encontrado' });
     }
 
-    if (loanCheck.rows[0].estado === 'PAGADO') {
+    const { estado, monto_total, total_pagado } = loanCheck.rows[0];
+
+    if (estado === 'PAGADO') {
       return res.status(400).json({
         ok: false,
         error: 'Este préstamo ya ha sido pagado en su totalidad. No se pueden registrar más abonos.'
+      });
+    }
+
+    const saldoPendiente = parseFloat(monto_total) - parseFloat(total_pagado);
+
+    // Validate that payment amount does not exceed pending balance (with 1 peso tolerance)
+    if (parseFloat(monto_pago) > (saldoPendiente + 1)) {
+      return res.status(400).json({
+        ok: false,
+        error: `El monto del abono excede el saldo pendiente ($${Math.round(saldoPendiente)}).`
       });
     }
 
@@ -593,11 +622,18 @@ app.post('/api/prestamos/:id/pagos', async (req, res) => {
 
     if (prestamoRes.rows.length > 0) {
       const prestamo = prestamoRes.rows[0];
-      const montoTotal = Number(prestamo.monto_total || prestamo.monto);
+      const montoTotal = Number(prestamo.monto_total) || Number(prestamo.monto);
       const totalPagado = Number(prestamo.total_pagado);
 
+      // Use epsilon for float comparison to avoid rounding errors
+      const epsilon = 1.0; // Tolerance of 1 peso
+      const isPaid = (totalPagado + epsilon) >= montoTotal;
+
+      console.log(`💰 Loan Payment Check [ID ${prestamo.id}]: Total=${montoTotal.toFixed(2)}, Paid=${totalPagado.toFixed(2)}, IsPaid=${isPaid}`);
+
       // If the loan is fully paid, update status to PAGADO
-      if (totalPagado >= montoTotal) {
+      if (isPaid) {
+        console.log(`✅ Marking loan ${prestamo.id} as PAGADO`);
         await pool.query(
           `UPDATE prestamos SET estado = 'PAGADO', updated_at = NOW() WHERE id = $1`,
           [req.params.id]
@@ -607,6 +643,7 @@ app.post('/api/prestamos/:id/pagos', async (req, res) => {
 
       // Send email notification if socio has email
       if (prestamo.correo) {
+        console.log(`📧 Sending payment email to ${prestamo.correo} for Loan ${prestamo.id}`);
         const socio = {
           nombre1: prestamo.nombre1,
           apellido1: prestamo.apellido1,
@@ -616,8 +653,10 @@ app.post('/api/prestamos/:id/pagos', async (req, res) => {
 
         // Send email asynchronously (don't wait for it)
         sendLoanPaymentEmail(socio, prestamo, rows[0]).catch(err => {
-          console.error('Error sending loan payment email:', err);
+          console.error('❌ Error sending loan payment email:', err);
         });
+      } else {
+        console.warn(`⚠️ No email found for socio in loan ${prestamo.id}, skipping notification.`);
       }
     }
 

@@ -2,103 +2,24 @@
 
 let prestamosData = [];
 let sociosForPrestamos = [];
-let editingPrestamoId = null;
 
 async function renderPrestamos() {
   const contentArea = document.getElementById('content-area');
 
   contentArea.innerHTML = `
     <div class="grid grid-cols-1 gap-6">
-      <!-- Form Card -->
-      <div class="card">
-        <div class="card-header">
-          <h2 class="card-title" id="prestamo-form-title">
-            <i class="fas fa-hand-holding-usd"></i> Crear Préstamo
-          </h2>
-          <button class="btn btn-secondary btn-sm hidden" id="btn-cancel-prestamo-edit">
-            <i class="fas fa-times"></i> Cancelar
-          </button>
-        </div>
-        <form id="form-prestamo">
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Socio *</label>
-              <select name="socio_id" id="prestamo-socio" class="form-select" required>
-                <option value="">-- Seleccione un socio --</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Monto *</label>
-              <input type="number" name="monto" id="prestamo-monto" class="form-input" min="0" step="1000" required>
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Tasa de Interés (%)</label>
-              <input type="number" name="tasa_interes" id="prestamo-tasa" class="form-input" min="0" max="100" step="0.1" value="0">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Plazo (meses)</label>
-              <input type="number" name="plazo_meses" id="prestamo-plazo" class="form-input" min="1" max="60" value="12">
-            </div>
-          </div>
-          <!-- Interest Calculation Display -->
-          <div id="interest-display" class="form-row" style="background: var(--primary-50); padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1rem; display: none;">
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; text-align: center;">
-              <div>
-                <div style="font-size: 0.75rem; color: var(--text-tertiary); margin-bottom: 0.25rem;">Monto Préstamo</div>
-                <div id="display-monto" style="font-weight: 600; color: var(--primary-700);">$0</div>
-              </div>
-              <div>
-                <div style="font-size: 0.75rem; color: var(--text-tertiary); margin-bottom: 0.25rem;">Interés</div>
-                <div id="display-interes" style="font-weight: 600; color: var(--warning-600);">$0</div>
-              </div>
-              <div>
-                <div style="font-size: 0.75rem; color: var(--text-tertiary); margin-bottom: 0.25rem;">Total a Pagar</div>
-                <div id="display-total" style="font-weight: 700; font-size: 1.125rem; color: var(--success-700);">$0</div>
-              </div>
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Fecha de Aprobación</label>
-              <input type="date" name="fecha_aprobacion" id="prestamo-fecha-aprobacion" class="form-input">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Fecha de Vencimiento</label>
-              <input type="date" name="fecha_vencimiento" id="prestamo-fecha-vencimiento" class="form-input">
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Estado</label>
-              <select name="estado" id="prestamo-estado" class="form-select">
-                <option value="PENDIENTE">Pendiente</option>
-                <option value="APROBADO">Aprobado</option>
-                <option value="PAGADO">Pagado</option>
-                <option value="VENCIDO">Vencido</option>
-              </select>
-            </div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Observaciones</label>
-            <textarea name="observaciones" id="prestamo-observaciones" class="form-textarea"></textarea>
-          </div>
-          <div class="form-actions">
-            <button type="submit" class="btn btn-primary">
-              <i class="fas fa-save"></i> Guardar Préstamo
-            </button>
-          </div>
-        </form>
-      </div>
-
       <!-- List Card -->
       <div class="card">
-        <div class="card-header">
-          <h2 class="card-title">
-            <i class="fas fa-list"></i> Lista de Préstamos
-          </h2>
-          <div class="header-actions-container">
+        <div class="card-header" style="flex-direction: column; align-items: stretch;">
+          <div class="flex items-center justify-between w-full">
+            <h2 class="card-title">
+              <i class="fas fa-list"></i> Lista de Préstamos
+            </h2>
+            <button class="btn btn-primary" id="btn-create-prestamo">
+              <i class="fas fa-plus"></i> Nuevo Préstamo
+            </button>
+          </div>
+          <div class="header-actions-container mt-4">
             <select id="filter-estado-prestamos" class="form-select" style="min-width: 150px;">
               <option value="">Todos los estados</option>
               <option value="PENDIENTE">Pendientes</option>
@@ -116,46 +37,8 @@ async function renderPrestamos() {
   `;
 
   // Event listeners
-  document.getElementById('form-prestamo').addEventListener('submit', handlePrestamoSubmit);
-  document.getElementById('btn-cancel-prestamo-edit').addEventListener('click', resetPrestamoForm);
+  document.getElementById('btn-create-prestamo').addEventListener('click', () => openPrestamoModal());
   document.getElementById('filter-estado-prestamos').addEventListener('change', loadPrestamos);
-
-  // Auto-populate fecha_aprobacion with current date
-  const today = new Date().toISOString().split('T')[0];
-  document.getElementById('prestamo-fecha-aprobacion').value = today;
-
-  // Auto-calculate fecha_vencimiento when plazo changes
-  document.getElementById('prestamo-plazo').addEventListener('change', (e) => {
-    const plazoMeses = parseInt(e.target.value) || 12;
-    const today = new Date();
-    const vencimiento = new Date(today);
-    vencimiento.setMonth(vencimiento.getMonth() + plazoMeses);
-    document.getElementById('prestamo-fecha-vencimiento').value = vencimiento.toISOString().split('T')[0];
-  });
-
-  // Calculate and display interest in real-time
-  function updateInterestDisplay() {
-    const monto = parseFloat(document.getElementById('prestamo-monto').value) || 0;
-    const tasa = parseFloat(document.getElementById('prestamo-tasa').value) || 0;
-
-    if (monto > 0) {
-      const interes = monto * (tasa / 100);
-      const total = monto + interes;
-
-      document.getElementById('display-monto').textContent = formatCurrency(monto);
-      document.getElementById('display-interes').textContent = formatCurrency(interes);
-      document.getElementById('display-total').textContent = formatCurrency(total);
-      document.getElementById('interest-display').style.display = 'block';
-    } else {
-      document.getElementById('interest-display').style.display = 'none';
-    }
-  }
-
-  document.getElementById('prestamo-monto').addEventListener('input', updateInterestDisplay);
-  document.getElementById('prestamo-tasa').addEventListener('input', updateInterestDisplay);
-
-  // Trigger initial calculation
-  document.getElementById('prestamo-plazo').dispatchEvent(new Event('change'));
 
   // Load data
   await loadSociosForSelect();
@@ -293,47 +176,187 @@ function renderPrestamosTable() {
   container.appendChild(table);
 }
 
+// Reemplaza startEditPrestamo original
 function startEditPrestamo(prestamo) {
-  editingPrestamoId = prestamo.id;
-
-  document.getElementById('prestamo-form-title').innerHTML = '<i class="fas fa-edit"></i> Editar Préstamo';
-  document.getElementById('prestamo-socio').value = prestamo.socio_id || '';
-  document.getElementById('prestamo-monto').value = prestamo.monto || '';
-  document.getElementById('prestamo-tasa').value = prestamo.tasa_interes || 0;
-  document.getElementById('prestamo-plazo').value = prestamo.plazo_meses || 12;
-  document.getElementById('prestamo-fecha-aprobacion').value = formatDateInput(prestamo.fecha_aprobacion) || '';
-  document.getElementById('prestamo-fecha-vencimiento').value = formatDateInput(prestamo.fecha_vencimiento) || '';
-  document.getElementById('prestamo-estado').value = prestamo.estado || 'PENDIENTE';
-  document.getElementById('prestamo-observaciones').value = prestamo.observaciones || '';
-
-  document.getElementById('btn-cancel-prestamo-edit').classList.remove('hidden');
-
-  // Scroll to form
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  openPrestamoModal(prestamo);
 }
 
-function resetPrestamoForm() {
-  editingPrestamoId = null;
-  document.getElementById('form-prestamo').reset();
-  document.getElementById('prestamo-form-title').innerHTML = '<i class="fas fa-hand-holding-usd"></i> Crear Préstamo';
-  document.getElementById('btn-cancel-prestamo-edit').classList.add('hidden');
+// Nueva función para abrir el modal
+function openPrestamoModal(prestamo = null) {
+  const isEditing = !!prestamo;
+  const modalContent = document.createElement('div');
 
-  // Re-populate fecha_aprobacion with current date
-  const today = new Date().toISOString().split('T')[0];
-  document.getElementById('prestamo-fecha-aprobacion').value = today;
+  modalContent.innerHTML = `
+    <form id="form-prestamo-modal">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Socio *</label>
+          <select name="socio_id" id="prestamo-socio" class="form-select" required ${isEditing ? 'disabled' : ''}>
+            <option value="">-- Seleccione un socio --</option>
+            ${sociosForPrestamos.map(s => `<option value="${s.id}">${formatNombre(s)} (${s.documento})</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Monto *</label>
+          <input type="number" name="monto" id="prestamo-monto" class="form-input" min="0" step="1000" required>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Tasa de Interés (%)</label>
+          <input type="number" name="tasa_interes" id="prestamo-tasa" class="form-input" min="0" max="100" step="0.1" value="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Plazo (meses)</label>
+          <input type="number" name="plazo_meses" id="prestamo-plazo" class="form-input" min="1" max="60" value="12">
+        </div>
+      </div>
+      
+      <!-- Interest Calculation Display -->
+      <div id="interest-display" class="form-row" style="background: var(--primary-50); padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1rem; display: none;">
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; text-align: center;">
+          <div>
+            <div style="font-size: 0.75rem; color: var(--text-tertiary); margin-bottom: 0.25rem;">Monto Préstamo</div>
+            <div id="display-monto" style="font-weight: 600; color: var(--primary-700);">$0</div>
+          </div>
+          <div>
+            <div style="font-size: 0.75rem; color: var(--text-tertiary); margin-bottom: 0.25rem;">Interés</div>
+            <div id="display-interes" style="font-weight: 600; color: var(--warning-600);">$0</div>
+          </div>
+          <div>
+            <div style="font-size: 0.75rem; color: var(--text-tertiary); margin-bottom: 0.25rem;">Total a Pagar</div>
+            <div id="display-total" style="font-weight: 700; font-size: 1.125rem; color: var(--success-700);">$0</div>
+          </div>
+        </div>
+      </div>
 
-  // Trigger fecha_vencimiento calculation
-  document.getElementById('prestamo-plazo').dispatchEvent(new Event('change'));
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Fecha de Aprobación</label>
+          <input type="date" name="fecha_aprobacion" id="prestamo-fecha-aprobacion" class="form-input">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fecha de Vencimiento</label>
+          <input type="date" name="fecha_vencimiento" id="prestamo-fecha-vencimiento" class="form-input">
+        </div>
+      </div>
+      
+      ${isEditing ? `
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Estado</label>
+          <select name="estado" id="prestamo-estado" class="form-select">
+            <option value="PENDIENTE">Pendiente</option>
+            <option value="APROBADO">Aprobado</option>
+            <option value="PAGADO">Pagado</option>
+            <option value="VENCIDO">Vencido</option>
+          </select>
+        </div>
+      </div>
+      ` : ''}
+
+      <div class="form-group">
+        <label class="form-label">Observaciones</label>
+        <textarea name="observaciones" id="prestamo-observaciones" class="form-textarea"></textarea>
+      </div>
+    </form>
+  `;
+
+  // Create Modal Actions
+  const actions = [
+    { text: 'Cancelar', className: 'btn-secondary' },
+    {
+      text: isEditing ? 'Actualizar Préstamo' : 'Guardar Préstamo',
+      className: 'btn-primary',
+      closeOnClick: false,
+      onClick: () => handlePrestamoModalSubmit(prestamo?.id)
+    }
+  ];
+
+  createModal(
+    isEditing ? '<i class="fas fa-edit"></i> Editar Préstamo' : '<i class="fas fa-hand-holding-usd"></i> Crear Préstamo',
+    modalContent,
+    actions
+  );
+
+  // Initialize Logic (Calculations, Dates, Initial Values)
+
+  // 1. Populate values if editing
+  if (isEditing) {
+    document.getElementById('prestamo-socio').value = prestamo.socio_id || '';
+    document.getElementById('prestamo-monto').value = prestamo.monto || '';
+    document.getElementById('prestamo-tasa').value = prestamo.tasa_interes || 0;
+    document.getElementById('prestamo-plazo').value = prestamo.plazo_meses || 12;
+    document.getElementById('prestamo-fecha-aprobacion').value = formatDateInput(prestamo.fecha_aprobacion) || '';
+    document.getElementById('prestamo-fecha-vencimiento').value = formatDateInput(prestamo.fecha_vencimiento) || '';
+    if (document.getElementById('prestamo-estado')) {
+      document.getElementById('prestamo-estado').value = prestamo.estado || 'PENDIENTE';
+    }
+    document.getElementById('prestamo-observaciones').value = prestamo.observaciones || '';
+  } else {
+    // Defaults for new loan
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('prestamo-fecha-aprobacion').value = today;
+  }
+
+  // 2. Setup Interest Calculation Logic
+  function updateInterestDisplay() {
+    const monto = parseFloat(document.getElementById('prestamo-monto').value) || 0;
+    const tasa = parseFloat(document.getElementById('prestamo-tasa').value) || 0;
+
+    if (monto > 0) {
+      const interes = monto * (tasa / 100);
+      const total = monto + interes;
+
+      document.getElementById('display-monto').textContent = formatCurrency(monto);
+      document.getElementById('display-interes').textContent = formatCurrency(interes);
+      document.getElementById('display-total').textContent = formatCurrency(total);
+      document.getElementById('interest-display').style.display = 'block';
+    } else {
+      document.getElementById('interest-display').style.display = 'none';
+    }
+  }
+
+  document.getElementById('prestamo-monto').addEventListener('input', updateInterestDisplay);
+  document.getElementById('prestamo-tasa').addEventListener('input', updateInterestDisplay);
+
+  // 3. Setup Date Calculation Logic
+  const plazoInput = document.getElementById('prestamo-plazo');
+  plazoInput.addEventListener('change', (e) => {
+    const plazoMeses = parseInt(e.target.value) || 12;
+    const fechaAprobacionVal = document.getElementById('prestamo-fecha-aprobacion').value;
+
+    if (fechaAprobacionVal) {
+      const approvedDate = new Date(fechaAprobacionVal);
+      const vencimiento = new Date(approvedDate);
+      vencimiento.setMonth(vencimiento.getMonth() + plazoMeses);
+
+      // Handle month rollover correctly (e.g. Jan 31 + 1 month -> Feb 28/29)
+      if (vencimiento.getDate() !== approvedDate.getDate()) {
+        vencimiento.setDate(0);
+      }
+
+      document.getElementById('prestamo-fecha-vencimiento').value = vencimiento.toISOString().split('T')[0];
+    }
+  });
+
+  // Calculate dates on open if creating new
+  if (!isEditing) {
+    plazoInput.dispatchEvent(new Event('change'));
+  }
+  // Calculate interest on open
+  updateInterestDisplay();
 }
 
-async function handlePrestamoSubmit(e) {
-  e.preventDefault();
+async function handlePrestamoModalSubmit(editingId) {
+  const form = document.getElementById('form-prestamo-modal');
+  if (!form.reportValidity()) return;
 
-  const formData = getFormData(e.target);
+  const formData = getFormData(form);
 
   try {
-    if (editingPrestamoId) {
-      await apiRequest(`/prestamos/${editingPrestamoId}`, {
+    if (editingId) {
+      await apiRequest(`/prestamos/${editingId}`, {
         method: 'PUT',
         body: JSON.stringify(formData)
       });
@@ -346,7 +369,7 @@ async function handlePrestamoSubmit(e) {
       showToast('Préstamo creado exitosamente', 'success');
     }
 
-    resetPrestamoForm();
+    closeAllModals();
     await loadPrestamos();
   } catch (error) {
     showToast(error.message || 'Error al guardar préstamo', 'error');
@@ -546,7 +569,7 @@ async function showPagosPrestamo(prestamo) {
     if (abonoForm) {
       abonoForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        await handleAbonoSubmit(prestamo.id, modal);
+        await handleAbonoSubmit(prestamo.id, modal, saldo);
       });
     }
   } catch (error) {
@@ -554,7 +577,7 @@ async function showPagosPrestamo(prestamo) {
   }
 }
 
-async function handleAbonoSubmit(prestamoId, modal) {
+async function handleAbonoSubmit(prestamoId, modal, maxAbono) {
   const monto = document.getElementById('abono-monto').value;
   const fecha = document.getElementById('abono-fecha').value;
   const forma = document.getElementById('abono-forma').value;
@@ -562,6 +585,19 @@ async function handleAbonoSubmit(prestamoId, modal) {
 
   if (!monto || monto <= 0) {
     showToast('Por favor ingrese un monto válido', 'error');
+    return;
+  }
+
+  // Validate amount does not exceed remaining balance
+  // Add a small margin of error (1 peso) for floating point comparisons
+  const parsedMonto = parseFloat(monto);
+  const parsedLimit = parseFloat(maxAbono) + 1;
+
+  console.log('Validating Payment:', { monto, maxAbono, parsedMonto, parsedLimit });
+
+  if (parsedMonto > parsedLimit) {
+    console.warn('❌ Payment validation failed: Amount exceeds balance');
+    showToast(`El monto no puede superar el saldo pendiente (${formatCurrency(maxAbono)})`, 'error');
     return;
   }
 

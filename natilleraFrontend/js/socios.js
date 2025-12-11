@@ -1,88 +1,25 @@
-// Socios View - Enhanced CRUD
+// Socios View - Enhanced CRUD and Modal Form
 
 let sociosData = [];
-let editingSocioId = null;
 
 async function renderSocios() {
   const contentArea = document.getElementById('content-area');
 
   contentArea.innerHTML = `
     <div class="grid grid-cols-1 gap-6">
-      <!-- Form Card -->
-      <div class="card">
-        <div class="card-header">
-          <h2 class="card-title" id="socio-form-title">
-            <i class="fas fa-user-plus"></i> Crear Socio
-          </h2>
-          <button class="btn btn-secondary btn-sm hidden" id="btn-cancel-socio-edit">
-            <i class="fas fa-times"></i> Cancelar
-          </button>
-        </div>
-        <form id="form-socio">
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Documento *</label>
-              <input type="text" name="documento" id="socio-documento" class="form-input" required>
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Primer Nombre *</label>
-              <input type="text" name="nombre1" id="socio-nombre1" class="form-input" required>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Segundo Nombre</label>
-              <input type="text" name="nombre2" id="socio-nombre2" class="form-input">
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Primer Apellido *</label>
-              <input type="text" name="apellido1" id="socio-apellido1" class="form-input" required>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Segundo Apellido</label>
-              <input type="text" name="apellido2" id="socio-apellido2" class="form-input">
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Correo</label>
-              <input type="email" name="correo" id="socio-correo" class="form-input">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Teléfono</label>
-              <input type="tel" name="telefono" id="socio-telefono" class="form-input">
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Foto URL</label>
-              <input type="text" name="foto_url" id="socio-foto-url" class="form-input">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Firma URL</label>
-              <input type="text" name="firma_url" id="socio-firma-url" class="form-input">
-            </div>
-          </div>
-          <div class="form-actions">
-            <button type="button" class="btn btn-danger hidden" id="btn-toggle-estado-socio">
-              <i class="fas fa-ban"></i> Inhabilitar
-            </button>
-            <button type="submit" class="btn btn-primary">
-              <i class="fas fa-save"></i> Guardar Socio
-            </button>
-          </div>
-        </form>
-      </div>
-
       <!-- List Card -->
       <div class="card">
         <div class="card-header">
-          <h2 class="card-title">
-            <i class="fas fa-users"></i> Lista de Socios
-          </h2>
-          <div class="header-actions-container">
+          <div class="flex items-center justify-between w-full" style="width: 100%;">
+            <h2 class="card-title">
+              <i class="fas fa-users"></i> Lista de Socios
+            </h2>
+            <button class="btn btn-primary" id="btn-create-socio">
+              <i class="fas fa-user-plus"></i> Crear Socio
+            </button>
+          </div>
+          
+          <div class="header-actions-container mt-4" style="margin-top: 1rem;">
             <select id="filter-status-socios" class="form-select" style="min-width: 150px;">
               <option value="">Todos los estados</option>
               <option value="ACTIVO">Activos</option>
@@ -102,9 +39,7 @@ async function renderSocios() {
   `;
 
   // Event listeners
-  document.getElementById('form-socio').addEventListener('submit', handleSocioSubmit);
-  document.getElementById('btn-cancel-socio-edit').addEventListener('click', resetSocioForm);
-  document.getElementById('btn-toggle-estado-socio').addEventListener('click', handleToggleEstadoSocio);
+  document.getElementById('btn-create-socio').addEventListener('click', () => openSocioModal());
   document.getElementById('search-socios').addEventListener('input', debounce(loadSocios, 350));
   document.getElementById('filter-status-socios').addEventListener('change', loadSocios);
 
@@ -135,7 +70,10 @@ function renderSociosTable() {
 
   if (sociosData.length === 0) {
     container.innerHTML = '';
-    container.appendChild(createEmptyState('users', 'No hay socios', 'No se encontraron socios con los filtros aplicados'));
+    container.appendChild(createEmptyState('users', 'No hay socios', 'No se encontraron socios con los filtros aplicados', {
+      text: 'Crear Nuevo Socio',
+      onClick: () => openSocioModal()
+    }));
     return;
   }
 
@@ -175,7 +113,7 @@ function renderSociosTable() {
         text: 'Editar',
         icon: 'fas fa-edit',
         className: 'btn-secondary',
-        onClick: (socio) => startEditSocio(socio)
+        onClick: (socio) => openSocioModal(socio)
       },
       {
         text: 'Pagos',
@@ -190,46 +128,97 @@ function renderSociosTable() {
   container.appendChild(table);
 }
 
-function startEditSocio(socio) {
-  editingSocioId = socio.id;
+function openSocioModal(socio = null) {
+  const isEditing = !!socio;
+  const modalContent = document.createElement('div');
 
-  document.getElementById('socio-form-title').innerHTML = '<i class="fas fa-user-edit"></i> Editar Socio';
-  document.getElementById('socio-documento').value = socio.documento || '';
-  document.getElementById('socio-nombre1').value = socio.nombre1 || '';
-  document.getElementById('socio-nombre2').value = socio.nombre2 || '';
-  document.getElementById('socio-apellido1').value = socio.apellido1 || '';
-  document.getElementById('socio-apellido2').value = socio.apellido2 || '';
-  document.getElementById('socio-correo').value = socio.correo || '';
-  document.getElementById('socio-telefono').value = socio.telefono || '';
-  document.getElementById('socio-foto-url').value = socio.foto_url || '';
-  document.getElementById('socio-firma-url').value = socio.firma_url || '';
+  modalContent.innerHTML = `
+    <form id="form-socio-modal">
+        <div class="form-row">
+        <div class="form-group">
+            <label class="form-label">Documento *</label>
+            <input type="text" name="documento" id="socio-documento" class="form-input" required value="${socio?.documento || ''}">
+        </div>
+        </div>
+        <div class="form-row">
+        <div class="form-group">
+            <label class="form-label">Primer Nombre *</label>
+            <input type="text" name="nombre1" id="socio-nombre1" class="form-input" required value="${socio?.nombre1 || ''}">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Segundo Nombre</label>
+            <input type="text" name="nombre2" id="socio-nombre2" class="form-input" value="${socio?.nombre2 || ''}">
+        </div>
+        </div>
+        <div class="form-row">
+        <div class="form-group">
+            <label class="form-label">Primer Apellido *</label>
+            <input type="text" name="apellido1" id="socio-apellido1" class="form-input" required value="${socio?.apellido1 || ''}">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Segundo Apellido</label>
+            <input type="text" name="apellido2" id="socio-apellido2" class="form-input" value="${socio?.apellido2 || ''}">
+        </div>
+        </div>
+        <div class="form-row">
+        <div class="form-group">
+            <label class="form-label">Correo</label>
+            <input type="email" name="correo" id="socio-correo" class="form-input" value="${socio?.correo || ''}">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Teléfono</label>
+            <input type="tel" name="telefono" id="socio-telefono" class="form-input" value="${socio?.telefono || ''}">
+        </div>
+        </div>
+        <div class="form-row">
+        <div class="form-group">
+            <label class="form-label">Foto URL</label>
+            <input type="text" name="foto_url" id="socio-foto-url" class="form-input" value="${socio?.foto_url || ''}">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Firma URL</label>
+            <input type="text" name="firma_url" id="socio-firma-url" class="form-input" value="${socio?.firma_url || ''}">
+        </div>
+        </div>
+    </form>
+  `;
 
-  document.getElementById('btn-cancel-socio-edit').classList.remove('hidden');
-  const btnToggle = document.getElementById('btn-toggle-estado-socio');
-  btnToggle.classList.remove('hidden');
-  btnToggle.textContent = socio.estado === 'ACTIVO' ? 'Inhabilitar' : 'Habilitar';
-  btnToggle.className = socio.estado === 'ACTIVO' ? 'btn btn-danger' : 'btn btn-success';
+  // Actions setup
+  const actions = [
+    { text: 'Cancelar', className: 'btn-secondary' },
+    {
+      text: isEditing ? 'Actualizar Socio' : 'Guardar Socio',
+      className: 'btn-primary',
+      closeOnClick: false, // Handle programmatically
+      onClick: () => handleSocioModalSubmit(socio?.id)
+    }
+  ];
 
-  // Scroll to form
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (isEditing) {
+    actions.unshift({
+      text: socio.estado === 'ACTIVO' ? 'Inhabilitar' : 'Habilitar',
+      className: socio.estado === 'ACTIVO' ? 'btn-danger' : 'btn-success',
+      closeOnClick: false,
+      onClick: () => handleToggleEstadoSocio(socio.id, socio.estado)
+    });
+  }
+
+  createModal(
+    isEditing ? '<i class="fas fa-user-edit"></i> Editar Socio' : '<i class="fas fa-user-plus"></i> Crear Socio',
+    modalContent,
+    actions
+  );
 }
 
-function resetSocioForm() {
-  editingSocioId = null;
-  document.getElementById('form-socio').reset();
-  document.getElementById('socio-form-title').innerHTML = '<i class="fas fa-user-plus"></i> Crear Socio';
-  document.getElementById('btn-cancel-socio-edit').classList.add('hidden');
-  document.getElementById('btn-toggle-estado-socio').classList.add('hidden');
-}
+async function handleSocioModalSubmit(editingId) {
+  const form = document.getElementById('form-socio-modal');
+  if (!form.reportValidity()) return;
 
-async function handleSocioSubmit(e) {
-  e.preventDefault();
-
-  const formData = getFormData(e.target);
+  const formData = getFormData(form);
 
   try {
-    if (editingSocioId) {
-      await apiRequest(`/socios/${editingSocioId}`, {
+    if (editingId) {
+      await apiRequest(`/socios/${editingId}`, {
         method: 'PUT',
         body: JSON.stringify(formData)
       });
@@ -242,30 +231,27 @@ async function handleSocioSubmit(e) {
       showToast('Socio creado exitosamente', 'success');
     }
 
-    resetSocioForm();
+    closeAllModals(); // Simplified for now, in robust app might want to close unique modal
     await loadSocios();
   } catch (error) {
     showToast(error.message || 'Error al guardar socio', 'error');
   }
 }
 
-async function handleToggleEstadoSocio() {
-  if (!editingSocioId) return;
-
-  const socio = sociosData.find(s => s.id == editingSocioId);
-  const nuevoEstado = socio.estado === 'ACTIVO' ? 'INHABILITADO' : 'ACTIVO';
+async function handleToggleEstadoSocio(id, currentEstado) {
+  const nuevoEstado = currentEstado === 'ACTIVO' ? 'INHABILITADO' : 'ACTIVO';
   const mensaje = nuevoEstado === 'INHABILITADO' ? '¿Inhabilitar este socio?' : '¿Reactivar este socio?';
 
   if (!window.confirm(mensaje)) return;
 
   try {
-    await apiRequest(`/socios/${editingSocioId}/estado`, {
+    await apiRequest(`/socios/${id}/estado`, {
       method: 'PUT',
       body: JSON.stringify({ estado: nuevoEstado })
     });
 
     showToast('Estado actualizado exitosamente', 'success');
-    resetSocioForm();
+    closeAllModals();
     await loadSocios();
   } catch (error) {
     showToast('Error al cambiar estado', 'error');
