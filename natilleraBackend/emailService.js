@@ -1,6 +1,7 @@
 // Email Service Module
 const nodemailer = require('nodemailer');
 const { generarPazYSalvo } = require('./pdfService');
+const { generateWeeklyReceipt, generateLoanPaymentReceipt } = require('./receiptService');
 require('dotenv').config();
 
 // Create transporter
@@ -185,8 +186,33 @@ async function sendWeeklyPaymentEmail(socio, payment) {
     from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
     to: socio.correo,
     subject: `✓ Confirmación de Pago - Semana ${payment.semana}`,
-    html: getEmailTemplate(content)
+    html: getEmailTemplate(content),
+    attachments: []
   };
+
+  // Generate and attach Receipt PDF
+  try {
+    const doc = generateWeeklyReceipt(payment, socio);
+
+    // Convert PDF stream to buffer
+    const buffers = [];
+    doc.on('data', buffers.push.bind(buffers));
+
+    await new Promise((resolve) => {
+      doc.on('end', resolve);
+      doc.end();
+    });
+
+    const pdfData = Buffer.concat(buffers);
+
+    mailOptions.attachments.push({
+      filename: `Recibo_Semana_${payment.semana}.pdf`,
+      content: pdfData,
+      contentType: 'application/pdf'
+    });
+  } catch (pdfError) {
+    console.error('⚠️ Error attaching receipt PDF:', pdfError);
+  }
 
   try {
     const info = await transporter.sendMail(mailOptions);
@@ -335,7 +361,8 @@ async function sendLoanPaymentEmail(socio, prestamo, pago) {
     subject: saldoPendiente <= 0
       ? '🎉 Préstamo Completado - Confirmación de Pago Final'
       : `✓ Confirmación de Abono - ${formatCurrency(pago.monto_pago)}`,
-    html: getEmailTemplate(content)
+    html: getEmailTemplate(content),
+    attachments: []
   };
 
   // Attach Paz y Salvo PDF if fully paid
@@ -343,18 +370,40 @@ async function sendLoanPaymentEmail(socio, prestamo, pago) {
     try {
       console.log('📄 Generando Paz y Salvo para préstamo:', prestamo.id);
       const pdfBuffer = await generarPazYSalvo(socio, prestamo);
-      mailOptions.attachments = [
-        {
-          filename: `PazYSalvo_Prestamo_${prestamo.id}.pdf`,
-          content: pdfBuffer,
-          contentType: 'application/pdf'
-        }
-      ];
+      mailOptions.attachments.push({
+        filename: `PazYSalvo_Prestamo_${prestamo.id}.pdf`,
+        content: pdfBuffer,
+        contentType: 'application/pdf'
+      });
       console.log('✅ Paz y Salvo generado y adjuntado.');
     } catch (pdfError) {
       console.error('❌ Error generando PDF Paz y Salvo:', pdfError);
       // We continue sending the email even if PDF fails, but we log the error
     }
+  }
+
+  // Generate and attach Receipt PDF (Abono)
+  try {
+    const doc = generateLoanPaymentReceipt(pago, prestamo, socio);
+
+    // Convert PDF stream to buffer
+    const buffers = [];
+    doc.on('data', buffers.push.bind(buffers));
+
+    await new Promise((resolve) => {
+      doc.on('end', resolve);
+      doc.end();
+    });
+
+    const pdfData = Buffer.concat(buffers);
+
+    mailOptions.attachments.push({
+      filename: `Recibo_Abono_Prestamo_${prestamo.id}.pdf`,
+      content: pdfData,
+      contentType: 'application/pdf'
+    });
+  } catch (pdfError) {
+    console.error('⚠️ Error attaching receipt PDF (Loan):', pdfError);
   }
 
   try {

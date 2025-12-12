@@ -553,9 +553,12 @@ async function showPagosPrestamo(prestamo) {
                 </div>
                 ${pago.observaciones ? `<div style="font-size: 0.75rem; color: var(--text-tertiary); margin-top: 0.25rem;">${pago.observaciones}</div>` : ''}
               </div>
-              <div style="text-align: right;">
+            <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem;">
                 <div style="font-size: 0.75rem; color: var(--text-tertiary);">Saldo después:</div>
                 <div style="font-weight: 600; color: var(--warning-600);">${formatCurrency(pago.balanceAfter)}</div>
+                <a href="${API_BASE}/prestamos/pagos/${pago.id}/recibo" target="_blank" class="btn btn-sm btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" title="Descargar Recibo">
+                  <i class="fas fa-file-pdf"></i> Recibo
+                </a>
               </div>
             </div>
           </div>

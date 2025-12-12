@@ -274,11 +274,21 @@ async function showPagosModal(socio) {
           ${pagos.map(p => {
       const badgeClass = p.estado === 'PAGADO' ? 'badge-success' : p.estado === 'PENDIENTE' ? 'badge-warning' : 'badge-danger';
       return `
-              <div class="pago-week-card" data-pago-id="${p.id}" data-semana="${p.semana}" style="padding: 0.75rem; background: var(--neutral-50); border-radius: var(--radius-md); text-align: center; cursor: pointer; transition: all 0.2s;">
+              <div class="pago-week-card" data-pago-id="${p.id}" data-semana="${p.semana}" style="padding: 0.75rem; background: var(--neutral-50); border-radius: var(--radius-md); text-align: center; cursor: pointer; transition: all 0.2s; position: relative;">
                 <div style="font-weight: 600; margin-bottom: 0.25rem;">Semana ${p.semana}</div>
                 <span class="badge ${badgeClass}">${p.estado}</span>
                 ${p.valor ? `<div style="font-size: 0.875rem; margin-top: 0.25rem;">${formatCurrency(p.valor)}</div>` : ''}
                 ${p.nombre_pagador ? `<div style="font-size: 0.75rem; color: var(--text-tertiary); margin-top: 0.25rem;">${p.nombre_pagador}</div>` : ''}
+                
+                ${p.estado === 'PAGADO' ? `
+                  <a href="${API_BASE}/pagos/${p.id}/recibo" target="_blank" 
+                     class="btn-icon" 
+                     style="position: absolute; top: 0.25rem; right: 0.25rem; background: transparent; color: var(--primary-600); padding: 0.25rem; font-size: 0.875rem;" 
+                     title="Descargar Recibo"
+                     onclick="event.stopPropagation();">
+                    <i class="fas fa-file-pdf"></i>
+                  </a>
+                ` : ''}
               </div>
             `;
     }).join('')}

@@ -4,6 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
 const { sendWeeklyPaymentEmail, sendLoanPaymentEmail, sendLoanCreationEmail } = require('./emailService');
+const { generateWeeklyReceipt, generateLoanPaymentReceipt } = require('./receiptService');
 
 const app = express();
 app.use(cors());
@@ -238,14 +239,23 @@ app.put('/api/pagos/:id', async (req, res) => {
     const pago = rows[0];
 
     // Send email notification if payment was successful and has value
-    if (pago.estado === 'PAGADO' && pago.valor && pago.valor > 0) {
+    const valorNum = parseFloat(pago.valor);
+    console.log(`[PUT] Payment update: ID=${pago.id}, State=${pago.estado}, Val=${valorNum}`);
+
+    if (pago.estado === 'PAGADO' && valorNum > 0) {
       // Get socio information
       const socioRes = await pool.query('SELECT * FROM socios WHERE id=$1', [pago.socio_id]);
-      if (socioRes.rows.length > 0 && socioRes.rows[0].correo) {
-        // Send email asynchronously (don't wait for it)
-        sendWeeklyPaymentEmail(socioRes.rows[0], pago).catch(err => {
-          console.error('Error sending payment email:', err);
-        });
+      if (socioRes.rows.length > 0) {
+        const socio = socioRes.rows[0];
+        if (socio.correo) {
+          console.log(`[PUT] Sending email to ${socio.correo} for payment ${pago.id}`);
+          // Send email asynchronously (don't wait for it)
+          sendWeeklyPaymentEmail(socio, pago).catch(err => {
+            console.error('Error sending payment email:', err);
+          });
+        } else {
+          console.log(`[PUT] Socio ${socio.id} has no email. Skipping notification.`);
+        }
       }
     }
 
@@ -306,9 +316,56 @@ app.post('/api/pagos', async (req, res) => {
       [pago.id, pago.socio_id, pago.semana, JSON.stringify({ action: 'UPSERT', data: pago }), usuario || 'SYSTEM']
     );
 
+    // Send email notification if payment was successful and has value
+    const valorNum = parseFloat(pago.valor);
+    console.log(`[POST] Payment upsert: ID=${pago.id}, State=${pago.estado}, Val=${valorNum}`);
+
+    if (pago.estado === 'PAGADO' && valorNum > 0) {
+      // Get socio information
+      const socioRes = await pool.query('SELECT * FROM socios WHERE id=$1', [pago.socio_id]);
+      if (socioRes.rows.length > 0) {
+        const socio = socioRes.rows[0];
+        if (socio.correo) {
+          console.log(`[POST] Sending email to ${socio.correo} for payment ${pago.id}`);
+          // Send email asynchronously (don't wait for it)
+          sendWeeklyPaymentEmail(socio, pago).catch(err => {
+            console.error('Error sending payment email:', err);
+          });
+        } else {
+          console.log(`[POST] Socio ${socio.id} has no email. Skipping notification.`);
+        }
+      }
+    }
+
     return res.json({ ok: true, pago });
   } catch (e) {
     return handleError(res, e, 'No se pudo crear/actualizar pago');
+  }
+});
+
+// Descargar Recibo de Pago (Semanal)
+app.get('/api/pagos/:id/recibo', async (req, res) => {
+  try {
+    const pagoId = req.params.id;
+    // Get payment and socio info
+    const pagoRes = await pool.query('SELECT * FROM pagos WHERE id=$1', [pagoId]);
+    if (!pagoRes.rows.length) return res.status(404).json({ ok: false, error: 'Pago no encontrado' });
+
+    const pago = pagoRes.rows[0];
+    const socioRes = await pool.query('SELECT * FROM socios WHERE id=$1', [pago.socio_id]);
+    const socio = socioRes.rows[0];
+
+    // Set headers for PDF download
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=recibo_semana_${pago.semana}_${socio.documento}.pdf`);
+
+    const doc = generateWeeklyReceipt(pago, socio);
+    doc.pipe(res);
+    doc.end();
+
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ ok: false, error: 'Error generando recibo' });
   }
 });
 
@@ -673,6 +730,38 @@ app.get('/api/prestamos/:id/pagos', async (req, res) => {
     );
     return res.json({ ok: true, pagos: rows });
   } catch (e) { return handleError(res, e); }
+});
+
+// Descargar Recibo de Abono a Préstamo
+app.get('/api/prestamos/pagos/:id/recibo', async (req, res) => {
+  try {
+    const pagoId = req.params.id;
+
+    // Get pago info
+    const pagoRes = await pool.query('SELECT * FROM prestamos_pagos WHERE id=$1', [pagoId]);
+    if (!pagoRes.rows.length) return res.status(404).json({ ok: false, error: 'Abono no encontrado' });
+    const pago = pagoRes.rows[0];
+
+    // Get prestamo info
+    const prestamoRes = await pool.query('SELECT * FROM prestamos WHERE id=$1', [pago.prestamo_id]);
+    const prestamo = prestamoRes.rows[0];
+
+    // Get socio info
+    const socioRes = await pool.query('SELECT * FROM socios WHERE id=$1', [prestamo.socio_id]);
+    const socio = socioRes.rows[0];
+
+    // Set headers
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=recibo_prestamo_${prestamo.id}_abono_${pago.id}.pdf`);
+
+    const doc = generateLoanPaymentReceipt(pago, prestamo, socio);
+    doc.pipe(res);
+    doc.end();
+
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ ok: false, error: 'Error generando recibo' });
+  }
 });
 
 // ----------------- DASHBOARD -----------------
