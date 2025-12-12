@@ -60,10 +60,10 @@ function generarPazYSalvo(socio, prestamo) {
 
             doc
                 .fontSize(12)
-                .text('A quien interese,', { align: 'left' })
-                .moveDown(1)
-                .text('Por medio del presente documento, la NATILLERA MIAHORRO certifica que:', { align: 'justify' })
-                .moveDown(1);
+                .text('A quien pueda interesar,', { align: 'center' })
+                .moveDown(2)
+                .text('Por medio del presente documento, la NATILLERA MIAHORRO certifica que:', { align: 'center' })
+                .moveDown(2);
 
             doc
                 .font('Helvetica-Bold')
@@ -74,7 +74,7 @@ function generarPazYSalvo(socio, prestamo) {
 
             doc
                 .text(
-                    `Ha cancelado en su totalidad las obligaciones financieras correspondientes al préstamo número ${prestamo.id}, ` +
+                    `Ha cancelado en su totalidad las obligaciones financieras correspondientes al préstamo con identificación interna número ${prestamo.id}, ` +
                     `por un valor total de ${formatCurrency(montoTotal)}.`,
                     { align: 'justify' }
                 )
@@ -92,8 +92,7 @@ function generarPazYSalvo(socio, prestamo) {
                 .font('Helvetica-Bold')
                 .text('ADMINISTRACIÓN NATILLERA MIAHORRO', { align: 'center' })
                 .font('Helvetica')
-                .text('Nit. 900.000.000-0', { align: 'center' }); // Nit ficticio o variable
-
+                
             // Pie de página
             doc
                 .moveDown(4)

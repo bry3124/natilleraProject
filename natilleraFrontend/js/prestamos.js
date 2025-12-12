@@ -101,6 +101,11 @@ function renderPrestamosTable() {
         `
       },
       {
+        key: 'fecha_solicitud',
+        label: 'Fecha',
+        render: (value) => formatDateShort(value)
+      },
+      {
         key: 'monto',
         label: 'Monto Préstamo',
         render: (value, prestamo) => `

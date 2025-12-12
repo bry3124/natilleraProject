@@ -367,7 +367,7 @@ async function sendLoanPaymentEmail(socio, prestamo, pago) {
   }
 }
 
-// Email for new loan creation - Security Alert
+// Email para nuevo prestamo y alerta de seguridad
 async function sendLoanCreationEmail(socio, prestamo) {
   if (!socio.correo) {
     console.log(`⚠️ No email address for socio ${socio.nombre1} ${socio.apellido1 || ''}, skipping creation email`);
