@@ -9,7 +9,7 @@ async function renderSocios() {
     <div class="grid grid-cols-1 gap-6">
       <!-- List Card -->
       <div class="card">
-        <div class="card-header">
+        <div class="card-header" style="flex-direction: column; align-items: stretch;">
           <div class="flex items-center justify-between w-full" style="width: 100%;">
             <h2 class="card-title">
               <i class="fas fa-users"></i> Lista de Socios
