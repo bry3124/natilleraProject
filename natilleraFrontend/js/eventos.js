@@ -1,75 +1,24 @@
-// Eventos View - Complete CRUD
-
+// Eventos View - Complete CRUD with Modal
 let eventosData = [];
-let editingEventoId = null;
 
 async function renderEventos() {
   const contentArea = document.getElementById('content-area');
 
   contentArea.innerHTML = `
     <div class="grid grid-cols-1 gap-6">
-      <!-- Form Card -->
-      <div class="card">
-        <div class="card-header">
-          <h2 class="card-title" id="evento-form-title">
-            <i class="fas fa-calendar-plus"></i> Crear Evento
-          </h2>
-          <button class="btn btn-secondary btn-sm hidden" id="btn-cancel-evento-edit">
-            <i class="fas fa-times"></i> Cancelar
-          </button>
-        </div>
-        <form id="form-evento">
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Nombre del Evento *</label>
-              <input type="text" name="nombre" id="evento-nombre" class="form-input" required>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Fecha *</label>
-              <input type="date" name="fecha" id="evento-fecha" class="form-input" required>
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Tipo</label>
-              <select name="tipo" id="evento-tipo" class="form-select">
-                <option value="GENERAL">General</option>
-                <option value="REUNION">Reunión</option>
-                <option value="RIFA">Rifa</option>
-                <option value="PAGO">Pago</option>
-                <option value="ASAMBLEA">Asamblea</option>
-                <option value="SOCIAL">Social</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Estado</label>
-              <select name="estado" id="evento-estado" class="form-select">
-                <option value="UPCOMING">Próximo</option>
-                <option value="ONGOING">En Curso</option>
-                <option value="COMPLETED">Completado</option>
-                <option value="CANCELLED">Cancelado</option>
-              </select>
-            </div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Descripción</label>
-            <textarea name="descripcion" id="evento-descripcion" class="form-textarea"></textarea>
-          </div>
-          <div class="form-actions">
-            <button type="submit" class="btn btn-primary">
-              <i class="fas fa-save"></i> Guardar Evento
-            </button>
-          </div>
-        </form>
-      </div>
-
       <!-- List Card -->
       <div class="card">
         <div class="card-header">
-          <h2 class="card-title">
-            <i class="fas fa-calendar-alt"></i> Lista de Eventos
-          </h2>
-          <div class="header-actions-container">
+          <div class="flex items-center justify-between w-full" style="width: 100%;">
+            <h2 class="card-title">
+              <i class="fas fa-calendar-alt"></i> Lista de Eventos
+            </h2>
+            <button class="btn btn-primary" id="btn-create-evento">
+              <i class="fas fa-calendar-plus"></i> Crear Evento
+            </button>
+          </div>
+          
+          <div class="header-actions-container mt-4" style="margin-top: 1rem;">
             <select id="filter-tipo-eventos" class="form-select" style="min-width: 150px;">
               <option value="">Todos los tipos</option>
               <option value="REUNION">Reunión</option>
@@ -95,8 +44,7 @@ async function renderEventos() {
   `;
 
   // Event listeners
-  document.getElementById('form-evento').addEventListener('submit', handleEventoSubmit);
-  document.getElementById('btn-cancel-evento-edit').addEventListener('click', resetEventoForm);
+  document.getElementById('btn-create-evento').addEventListener('click', () => openEventoModal());
   document.getElementById('filter-tipo-eventos').addEventListener('change', loadEventos);
   document.getElementById('filter-estado-eventos').addEventListener('change', loadEventos);
 
@@ -127,7 +75,10 @@ function renderEventosTable() {
 
   if (eventosData.length === 0) {
     container.innerHTML = '';
-    container.appendChild(createEmptyState('calendar-alt', 'No hay eventos', 'No se encontraron eventos con los filtros aplicados'));
+    container.appendChild(createEmptyState('calendar-alt', 'No hay eventos', 'No se encontraron eventos con los filtros aplicados', {
+      text: 'Crear Nuevo Evento',
+      onClick: () => openEventoModal()
+    }));
     return;
   }
 
@@ -169,7 +120,7 @@ function renderEventosTable() {
         text: 'Editar',
         icon: 'fas fa-edit',
         className: 'btn-secondary',
-        onClick: (evento) => startEditEvento(evento)
+        onClick: (evento) => openEventoModal(evento)
       },
       {
         text: 'Eliminar',
@@ -184,37 +135,75 @@ function renderEventosTable() {
   container.appendChild(table);
 }
 
-function startEditEvento(evento) {
-  editingEventoId = evento.id;
+function openEventoModal(evento = null) {
+  const isEdit = !!evento;
+  const title = isEdit ? 'Editar Evento' : 'Crear Nuevo Evento';
 
-  document.getElementById('evento-form-title').innerHTML = '<i class="fas fa-calendar-edit"></i> Editar Evento';
-  document.getElementById('evento-nombre').value = evento.nombre || '';
-  document.getElementById('evento-fecha').value = formatDateInput(evento.fecha) || '';
-  document.getElementById('evento-tipo').value = evento.tipo || 'GENERAL';
-  document.getElementById('evento-estado').value = evento.estado || 'UPCOMING';
-  document.getElementById('evento-descripcion').value = evento.descripcion || '';
+  const content = document.createElement('div');
+  content.innerHTML = `
+    <form id="form-evento-modal">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Nombre del Evento *</label>
+          <input type="text" name="nombre" id="evento-nombre" class="form-input" required value="${evento?.nombre || ''}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fecha *</label>
+          <input type="date" name="fecha" id="evento-fecha" class="form-input" required value="${formatDateInput(evento?.fecha) || ''}">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Tipo</label>
+          <select name="tipo" id="evento-tipo" class="form-select">
+            <option value="GENERAL" ${evento?.tipo === 'GENERAL' ? 'selected' : ''}>General</option>
+            <option value="REUNION" ${evento?.tipo === 'REUNION' ? 'selected' : ''}>Reunión</option>
+            <option value="RIFA" ${evento?.tipo === 'RIFA' ? 'selected' : ''}>Rifa</option>
+            <option value="PAGO" ${evento?.tipo === 'PAGO' ? 'selected' : ''}>Pago</option>
+            <option value="ASAMBLEA" ${evento?.tipo === 'ASAMBLEA' ? 'selected' : ''}>Asamblea</option>
+            <option value="SOCIAL" ${evento?.tipo === 'SOCIAL' ? 'selected' : ''}>Social</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Estado</label>
+          <select name="estado" id="evento-estado" class="form-select">
+            <option value="UPCOMING" ${evento?.estado === 'UPCOMING' ? 'selected' : ''}>Próximo</option>
+            <option value="ONGOING" ${evento?.estado === 'ONGOING' ? 'selected' : ''}>En Curso</option>
+            <option value="COMPLETED" ${evento?.estado === 'COMPLETED' ? 'selected' : ''}>Completado</option>
+            <option value="CANCELLED" ${evento?.estado === 'CANCELLED' ? 'selected' : ''}>Cancelado</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Descripción</label>
+        <textarea name="descripcion" id="evento-descripcion" class="form-textarea" rows="3">${evento?.descripcion || ''}</textarea>
+      </div>
+      <div class="form-actions" style="margin-top: 1.5rem;">
+        <button type="submit" class="btn btn-primary" style="width: 100%;">
+          <i class="fas fa-save"></i> ${isEdit ? 'Actualizar' : 'Guardar'} Evento
+        </button>
+      </div>
+    </form>
+  `;
 
-  document.getElementById('btn-cancel-evento-edit').classList.remove('hidden');
+  const modal = createModal(title, content);
 
-  // Scroll to form
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  const form = content.querySelector('#form-evento-modal');
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const success = await handleEventoSubmit(e, evento?.id);
+    if (success) {
+      modal.close();
+    }
+  });
 }
 
-function resetEventoForm() {
-  editingEventoId = null;
-  document.getElementById('form-evento').reset();
-  document.getElementById('evento-form-title').innerHTML = '<i class="fas fa-calendar-plus"></i> Crear Evento';
-  document.getElementById('btn-cancel-evento-edit').classList.add('hidden');
-}
-
-async function handleEventoSubmit(e) {
-  e.preventDefault();
-
+async function handleEventoSubmit(e, editingId = null) {
   const formData = getFormData(e.target);
 
   try {
-    if (editingEventoId) {
-      await apiRequest(`/eventos/${editingEventoId}`, {
+    if (editingId) {
+      await apiRequest(`/eventos/${editingId}`, {
         method: 'PUT',
         body: JSON.stringify(formData)
       });
@@ -227,10 +216,11 @@ async function handleEventoSubmit(e) {
       showToast('Evento creado exitosamente', 'success');
     }
 
-    resetEventoForm();
     await loadEventos();
+    return true;
   } catch (error) {
     showToast(error.message || 'Error al guardar evento', 'error');
+    return false;
   }
 }
 
