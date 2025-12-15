@@ -41,9 +41,12 @@ async function renderRifas() {
          </div>
          
          <div class="rifa-grid-container mt-4">
-             <div class="flex justify-end mb-2">
+             <div class="flex justify-end mb-2 gap-2">
                 <button class="btn btn-sm btn-accent" id="btn-distribute-tickets">
                     <i class="fas fa-random"></i> Asignar Números
+                </button>
+                 <button class="btn btn-sm btn-warning" id="btn-mark-winner">
+                    <i class="fas fa-trophy"></i> Registrar Ganador
                 </button>
              </div>
             <div class="rifa-tickets-grid" id="rifa-tickets-grid"></div>
@@ -134,6 +137,7 @@ async function openRifaDetail(rifa) {
     document.getElementById('rifa-detail-info').textContent = `Sorteo: ${formatDate(rifa.fecha_evento)}`;
 
     document.getElementById('btn-distribute-tickets').addEventListener('click', handleDistributeTickets);
+    document.getElementById('btn-mark-winner').addEventListener('click', () => openWinnerModal(rifa));
 
     await loadRifaTickets(rifa.id);
 }
@@ -145,14 +149,16 @@ async function loadRifaTickets(rifaId) {
     try {
         const data = await apiRequest(`/rifas/${rifaId}/tickets`);
         const tickets = data.tickets || [];
-        renderTicketsGrid(tickets);
+        // Find current rifa to get winner
+        const currentRifa = rifasData.find(r => r.id == rifaId);
+        renderTicketsGrid(tickets, currentRifa ? currentRifa.numero_ganador : null);
     } catch (error) {
         grid.innerHTML = '<p class="text-red-500 text-center">Error cargando tickets</p>';
         showToast('Error cargando tickets', 'error');
     }
 }
 
-function renderTicketsGrid(tickets) {
+function renderTicketsGrid(tickets, winningNumber = null) {
     const grid = document.getElementById('rifa-tickets-grid');
     grid.innerHTML = '';
 
@@ -171,11 +177,23 @@ function renderTicketsGrid(tickets) {
         if (ticket.estado === 'RESERVADO') bgClass = 'bg-yellow-50 hover:bg-yellow-100 border-yellow-200 text-yellow-700';
         if (ticket.estado === 'PAGADO') bgClass = 'bg-green-50 hover:bg-green-100 border-green-200 text-green-700';
 
+        let winnerStyle = '';
+        let winnerIcon = '';
+
+        if (winningNumber && ticket.numero === winningNumber) {
+            bgClass = 'bg-yellow-400 text-yellow-900 border-yellow-500 shadow-md transform scale-105';
+            winnerStyle = 'box-shadow: 0 0 15px rgba(251, 191, 36, 0.5); z-index: 10;';
+            winnerIcon = '<div class="absolute -top-3 -right-2 text-2xl text-yellow-600 drop-shadow-sm">👑</div>';
+        }
+
         el.className = `
-            border rounded-lg p-2 flex flex-col items-center justify-center cursor-pointer transition-all
+            border rounded-lg p-2 flex flex-col items-center justify-center cursor-pointer transition-all relative
             ${bgClass}
         `;
+        el.style.cssText = winnerStyle;
+
         el.innerHTML = `
+            ${winnerIcon}
             <span class="font-bold text-lg">${ticket.numero}</span>
             <span class="text-[10px] truncate max-w-full">${ticket.nombre_cliente || 'Libre'}</span>
         `;
@@ -495,4 +513,64 @@ function openSearchTicketsModal() {
             if (e.key === 'Enter') doSearch();
         };
     }, 100);
+}
+
+function openWinnerModal(rifa) {
+    const content = `
+        <div class="mb-4 text-center">
+            <p class="mb-2 text-gray-600">Selecciona el número ganador del sorteo <strong>${rifa.nombre}</strong></p>
+            <div class="flex justify-center items-center gap-2">
+                <input type="number" id="winner-num-input" class="form-input text-center text-2xl w-24" min="0" max="99" placeholder="00" maxlength="2">
+            </div>
+            <p class="mt-2 text-xs text-red-500 hidden" id="winner-error-msg"></p>
+        </div>
+    `;
+
+    createModal('Registrar Ganador', content, [
+        { text: 'Cancelar', className: 'btn-secondary' },
+        {
+            text: 'Guardar',
+            className: 'btn-primary',
+            onClick: async () => {
+                const input = document.getElementById('winner-num-input');
+                let val = input.value;
+                if (val === '') {
+                    document.getElementById('winner-error-msg').textContent = 'Ingrese un número';
+                    document.getElementById('winner-error-msg').classList.remove('hidden');
+                    return;
+                }
+
+                // Pad with 0 if single digit
+                val = val.toString().padStart(2, '0');
+                if (val.length > 2 || parseInt(val) < 0 || parseInt(val) > 99) {
+                    document.getElementById('winner-error-msg').textContent = 'Número inválido (00-99)';
+                    document.getElementById('winner-error-msg').classList.remove('hidden');
+                    return;
+                }
+
+                try {
+                    const btn = document.querySelector('.modal-footer .btn-primary');
+                    if (btn) {
+                        btn.disabled = true;
+                        btn.textContent = 'Guardando...';
+                    }
+
+                    await apiRequest(`/rifas/${rifa.id}/winner`, {
+                        method: 'POST',
+                        body: JSON.stringify({ numero: val })
+                    });
+
+                    showToast('Ganador registrado exitosamente! 🏆', 'success');
+                    closeAllModals();
+
+                    // Refresh data
+                    await loadRifas(); // Update local list
+                    await loadRifaTickets(rifa.id); // Reload grid
+
+                } catch (e) {
+                    showToast(e.message || 'Error registrando ganador', 'error');
+                }
+            }
+        }
+    ]);
 }

@@ -484,8 +484,56 @@ async function sendLoanCreationEmail(socio, prestamo) {
   }
 }
 
+// Email for Rifa Winner
+async function sendRifaWinnerEmail(socio, rifa, ticketNumber) {
+  if (!socio.correo) {
+    console.log(`⚠️ No email address for socio ${socio.nombre1}, skipping winner email`);
+    return;
+  }
+
+  const htmlContent = getEmailTemplate(`
+    <div style="text-align: center; margin-bottom: 30px;">
+        <div style="font-size: 48px; margin-bottom: 10px;">🏆</div>
+        <h2 style="color: #d97706; margin: 0 0 10px 0; font-size: 28px;">¡FELICITACIONES!</h2>
+        <p style="font-size: 18px; color: #4b5563;">¡Eres el ganador!</p>
+    </div>
+
+    <div class="content-block">
+      <p>Hola <strong>${socio.nombre1} ${socio.apellido1 || ''}</strong>,</p>
+      <p>Nos complace informarte que eres el feliz ganador del sorteo de la rifa <strong>"${rifa.nombre}"</strong>.</p>
+    </div>
+
+    <div style="background-color: #fffbeb; border: 2px solid #fcd34d; border-radius: 10px; padding: 20px; text-align: center; margin: 25px 0;">
+      <p style="margin: 0; color: #92400e; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">Número Ganador</p>
+      <p style="margin: 10px 0 0 0; color: #d97706; font-size: 48px; font-weight: 800; line-height: 1;">${ticketNumber}</p>
+    </div>
+
+    <div class="content-block">
+      <p>Por favor ponte en contacto con los administradores de la Natillera para coordinar la entrega de tu premio.</p>
+      <p>¡Gracias por participar y apoyar a la Natillera!</p>
+    </div>
+  `);
+
+  const mailOptions = {
+    from: process.env.EMAIL_FROM || '"Natillera MiAhorro" <noreply@natillera.com>',
+    to: socio.correo,
+    subject: '🏆 ¡FELICITACIONES! Ganaste la Rifa - Natillera MiAhorro',
+    html: htmlContent
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`✅ Rifa winner email sent to ${socio.correo}: ${info.messageId}`);
+    return info;
+  } catch (error) {
+    console.error('❌ Error sending winner email:', error.message);
+    // Don't throw, just log
+  }
+}
+
 module.exports = {
   sendWeeklyPaymentEmail,
   sendLoanPaymentEmail,
-  sendLoanCreationEmail
+  sendLoanCreationEmail,
+  sendRifaWinnerEmail
 };

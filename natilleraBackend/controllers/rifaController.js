@@ -1,4 +1,5 @@
 const { query, pool } = require('../config/db');
+const { sendRifaWinnerEmail } = require('../emailService');
 
 const createRifa = async (req, res) => {
     try {
@@ -173,11 +174,54 @@ const getTicketsByDocument = async (req, res) => {
     }
 };
 
+const markWinner = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { numero } = req.body;
+
+        // 1. Update Rifa with winning number
+        const { rows } = await query(
+            'UPDATE rifas SET numero_ganador = $1 WHERE id = $2 RETURNING *',
+            [numero, id]
+        );
+
+        if (rows.length === 0) return res.status(404).json({ ok: false, error: 'Rifa no encontrada' });
+        const rifa = rows[0];
+
+        // 2. Find the winner ticket
+        const ticketRes = await query(
+            'SELECT * FROM rifa_numeros WHERE rifa_id = $1 AND numero = $2',
+            [id, numero]
+        );
+
+        if (ticketRes.rows.length > 0) {
+            const ticket = ticketRes.rows[0];
+            // 3. Find Socio by Phone if available (most reliable link we currently have)
+            if (ticket.telefono_cliente) {
+                const socioRes = await query('SELECT * FROM socios WHERE telefono = $1', [ticket.telefono_cliente]);
+                if (socioRes.rows.length > 0) {
+                    const socio = socioRes.rows[0];
+                    console.log(`🏆 Found winner socio: ${socio.nombre1} ${socio.apellido1} (${socio.correo})`);
+
+                    // 4. Send Email (async, don't block response)
+                    sendRifaWinnerEmail(socio, rifa, numero).catch(e => console.error('Error sending email async:', e));
+                }
+            }
+        }
+
+        return res.json({ ok: true, rifa });
+    } catch (e) {
+        console.error(e);
+        return res.status(500).json({ ok: false, error: 'Error registrando ganador' });
+    }
+};
+
 module.exports = {
     createRifa,
     getRifas,
     getTickets,
     updateTicket,
     distributeTickets,
-    getTicketsByDocument
+    getTicketsByDocument,
+    markWinner
 };

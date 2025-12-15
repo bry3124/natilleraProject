@@ -8,5 +8,6 @@ router.get('/:id/tickets', controller.getTickets);
 router.put('/tickets/:id', controller.updateTicket);
 router.post('/:id/distribute', controller.distributeTickets);
 router.get('/tickets-by-doc/:documento', controller.getTicketsByDocument);
+router.post('/:id/winner', controller.markWinner);
 
 module.exports = router;
