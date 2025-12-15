@@ -66,6 +66,9 @@ const Router = {
             case 'prestamos':
                 if (typeof renderPrestamos === 'function') renderPrestamos();
                 break;
+            case 'rifas':
+                if (typeof renderRifas === 'function') renderRifas();
+                break;
             default:
                 contentArea.innerHTML = '<div class="empty-state"><h2>Vista no encontrada</h2></div>';
         }

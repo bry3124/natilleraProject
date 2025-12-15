@@ -8,6 +8,7 @@ const eventoRoutes = require('./routes/eventoRoutes');
 const prestamoRoutes = require('./routes/prestamoRoutes');
 const rifaRoutes = require('./routes/rifaRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
+const authRoutes = require('./routes/authRoutes');
 
 const app = express();
 
@@ -22,6 +23,7 @@ app.use('/api/eventos', eventoRoutes);
 app.use('/api/prestamos', prestamoRoutes);
 app.use('/api/rifas', rifaRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/auth', authRoutes);
 
 // Health Check
 app.get('/', (req, res) => {

@@ -6,6 +6,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize Router
   Router.init();
 
+  // Check Auth
+  if (typeof Auth !== 'undefined') {
+    Auth.checkAuth();
+  }
+
   // Mobile menu toggle
   const hamburgerBtn = document.getElementById('hamburger-btn');
   const sidebar = document.getElementById('sidebar');

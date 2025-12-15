@@ -4,5 +4,9 @@ const controller = require('../controllers/rifaController');
 
 router.get('/', controller.getRifas);
 router.post('/', controller.createRifa);
+router.get('/:id/tickets', controller.getTickets);
+router.put('/tickets/:id', controller.updateTicket);
+router.post('/:id/distribute', controller.distributeTickets);
+router.get('/tickets-by-doc/:documento', controller.getTicketsByDocument);
 
 module.exports = router;

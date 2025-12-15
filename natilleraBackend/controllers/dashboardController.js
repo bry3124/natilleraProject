@@ -35,8 +35,24 @@ const getSummary = async (req, res) => {
       LIMIT 10
     `);
 
+        // Stats calculations
+        const statsRes = await query(`
+            SELECT 
+                (SELECT COUNT(*) FROM socios WHERE estado = 'ACTIVO') as total_socios,
+                (SELECT COUNT(*) FROM eventos WHERE estado = 'UPCOMING') as eventos_proximos,
+                (SELECT COUNT(*) FROM prestamos WHERE estado = 'PENDIENTE') as prestamos_pendientes,
+                (SELECT COALESCE(SUM(valor), 0) FROM pagos WHERE estado = 'PAGADO') as total_ahorrado
+        `);
+        const stats = statsRes.rows[0];
+
         return res.json({
             ok: true,
+            stats: {
+                total_socios: parseInt(stats.total_socios),
+                eventos_proximos: parseInt(stats.eventos_proximos),
+                prestamos_pendientes: parseInt(stats.prestamos_pendientes),
+                total_ahorrado: parseFloat(stats.total_ahorrado)
+            },
             socios: sociosRes.rows,
             eventos: eventosRes.rows,
             prestamos: prestamosRes.rows
