@@ -66,7 +66,16 @@ const createPrestamo = async (req, res) => {
             [socio_id, monto, tasa_interes || 0, plazo_meses || 12, fechaAprobacion, fechaVencimiento, montoTotal, observaciones]
         );
 
-        const prestamo = rows[0];
+        const tempPrestamo = rows[0];
+        const codigo = `PRE-${tempPrestamo.id.toString().padStart(4, '0')}`;
+
+        // Update the loan with the generated code
+        const { rows: finalRows } = await query(
+            'UPDATE prestamos SET codigo = $1 WHERE id = $2 RETURNING *',
+            [codigo, tempPrestamo.id]
+        );
+
+        const prestamo = finalRows[0];
 
         // Background email
         (async () => {

@@ -220,7 +220,17 @@ async function sendWeeklyPaymentEmail(socio, payment) {
     console.log('✅ Email sent to:', socio.correo, '- Message ID:', info.messageId);
 
     // Send WhatsApp Notification
-    const whatsAppMessage = `🏦 *Natillera MiAhorro*\n\nHola ${socio.nombre1}, hemos recibido tu pago de la *Semana ${payment.semana}* por valor de *${formatCurrency(payment.valor)}*.\n\nGracias por tu cumplimiento via email.`;
+    const whatsAppMessage = `🏦 *Natillera MiAhorro*
+
+Hola *${socio.nombre1}*, confirmamos el recibo de tu pago:
+
+📅 *Fecha:* ${formatDate(payment.fecha_pago)}
+💳 *Medio:* ${formatPaymentMethod(payment.forma_pago)}
+💰 *Monto:* ${formatCurrency(payment.valor)}
+📝 *Concepto:* Semana ${payment.semana}
+👤 *Pagador:* ${payment.nombre_pagador || socio.nombre1}
+
+¡Gracias por tu cumplimiento!`;
     sendWhatsAppMessage(socio, whatsAppMessage).catch(err => console.error('Error in BG WhatsApp:', err));
 
     return { success: true, messageId: info.messageId };
@@ -365,8 +375,8 @@ async function sendLoanPaymentEmail(socio, prestamo, pago) {
     from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
     to: socio.correo,
     subject: saldoPendiente <= 0
-      ? '🎉 Préstamo Completado - Confirmación de Pago Final'
-      : `✓ Confirmación de Abono - ${formatCurrency(pago.monto_pago)}`,
+      ? `🎉 Préstamo Completado (${prestamo.codigo}) - Pago Final`
+      : `✓ Abono Préstamo ${prestamo.codigo} - ${formatCurrency(pago.monto_pago)}`,
     html: getEmailTemplate(content),
     attachments: []
   };
@@ -417,7 +427,16 @@ async function sendLoanPaymentEmail(socio, prestamo, pago) {
     console.log('✅ Email sent to:', socio.correo, '- Message ID:', info.messageId);
 
     // Send WhatsApp Notification
-    const whatsAppMessage = `🏦 *Natillera MiAhorro*\n\nHola ${socio.nombre1}, confirmamos tu abono al préstamo por valor de *${formatCurrency(pago.monto_pago)}*.\nSaldo pendiente: *${formatCurrency(saldoPendiente)}*.\n\n${saldoPendiente <= 0 ? '🎉 *¡Felicitaciones! Deuda cancelada.*' : ''}`;
+    const whatsAppMessage = `🏦 *Natillera MiAhorro*
+
+Hola *${socio.nombre1}*, confirmamos el abono a tu préstamo *#${prestamo.codigo}*:
+
+📅 *Fecha:* ${formatDate(pago.fecha_pago)}
+💳 *Medio:* ${formatPaymentMethod(pago.forma_pago)}
+💰 *Abono:* ${formatCurrency(pago.monto_pago)}
+📉 *Saldo Pendiente:* ${formatCurrency(saldoPendiente)}
+
+${saldoPendiente <= 0 ? '🎉 *¡Felicitaciones! Deuda cancelada.*' : '¡Gracias por tu cumplimiento!'}`;
     sendWhatsAppMessage(socio, whatsAppMessage).catch(err => console.error('Error in BG WhatsApp:', err));
 
     return { success: true, messageId: info.messageId };
@@ -481,13 +500,29 @@ async function sendLoanCreationEmail(socio, prestamo) {
   const mailOptions = {
     from: process.env.EMAIL_FROM || '"Natillera MiAhorro" <noreply@natillera.com>',
     to: socio.correo,
-    subject: '🔔 Nuevo Préstamo Registrado - Natillera MiAhorro',
+    subject: `🔔 Nuevo Préstamo (${prestamo.codigo}) - Natillera MiAhorro`,
     html: htmlContent
   };
 
   try {
     const info = await transporter.sendMail(mailOptions);
     console.log(`✅ Loan creation email sent to ${socio.correo}: ${info.messageId}`);
+
+    // WhatsApp Notification
+    const whatsAppMessage = `🏦 *Natillera MiAhorro*
+
+Hola *${socio.nombre1}*, se ha registrado un nuevo préstamo *#${prestamo.codigo}* a tu nombre:
+
+💰 *Monto:* ${formatCurrency(prestamo.monto)}
+📅 *Fecha:* ${formatDate(prestamo.fecha_aprobacion || new Date())}
+🕒 *Plazo:* ${prestamo.plazo_meses} meses
+📈 *Tasa:* ${prestamo.tasa_interes}%
+💵 *Total a Pagar:* ${formatCurrency(prestamo.monto_total)}
+
+⚠️ *Alerta:* Si tú no solicitaste este préstamo, contáctanos de inmediato.`;
+
+    sendWhatsAppMessage(socio, whatsAppMessage).catch(err => console.error('Error in BG WhatsApp (Loan Creation):', err));
+
     return info;
   } catch (error) {
     console.error('❌ Error sending loan creation email:', error.message);

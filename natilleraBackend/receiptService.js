@@ -114,8 +114,8 @@ function generateLoanPaymentReceipt(pago, prestamo, socio) {
     doc.font('Helvetica-Bold').text('Recibo No:', leftX, currentY);
     doc.font('Helvetica').text(`PRES-AB-${pago.id}`, leftX + 80, currentY);
 
-    doc.font('Helvetica-Bold').text('Préstamo ID:', rightX, currentY);
-    doc.font('Helvetica').text(`${prestamo.id}`, rightX + 80, currentY);
+    doc.font('Helvetica-Bold').text('Préstamo:', rightX, currentY);
+    doc.font('Helvetica').text(`${prestamo.codigo || prestamo.id}`, rightX + 80, currentY);
 
     currentY += lineHeight;
 

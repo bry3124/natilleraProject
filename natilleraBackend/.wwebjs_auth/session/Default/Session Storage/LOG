@@ -1,3 +1,2 @@
-2025/12/17-12:55:45.313 536c Reusing MANIFEST C:\automatizacionDeProcesos\natillera\natilleraBackend\.wwebjs_auth\session\Default\Session Storage/MANIFEST-000001
-2025/12/17-12:55:45.314 536c Recovering log #3
-2025/12/17-12:55:45.316 536c Reusing old log C:\automatizacionDeProcesos\natillera\natilleraBackend\.wwebjs_auth\session\Default\Session Storage/000003.log 
+2025/12/17-13:37:08.037 2738 Creating DB C:\automatizacionDeProcesos\natillera\natilleraBackend\.wwebjs_auth\session\Default\Session Storage since it was missing.
+2025/12/17-13:37:08.071 2738 Reusing MANIFEST C:\automatizacionDeProcesos\natillera\natilleraBackend\.wwebjs_auth\session\Default\Session Storage/MANIFEST-000001
