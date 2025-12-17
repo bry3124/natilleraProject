@@ -55,3 +55,20 @@ INSERT INTO eventos (nombre, descripcion, fecha, tipo, estado) VALUES
   ('Asamblea General', 'Asamblea anual de socios', CURRENT_DATE - INTERVAL '10 days', 'ASAMBLEA', 'COMPLETED'),
   ('Evento Social', 'Integración de socios', CURRENT_DATE - INTERVAL '5 days', 'SOCIAL', 'COMPLETED')
 ON CONFLICT DO NOTHING;
+
+-- WhatsApp Integration
+ALTER TABLE socios ADD COLUMN IF NOT EXISTS whatsapp_enabled BOOLEAN DEFAULT TRUE;
+
+CREATE TABLE IF NOT EXISTS whatsapp_logs (
+    id SERIAL PRIMARY KEY,
+    socio_id INTEGER REFERENCES socios(id) ON DELETE SET NULL,
+    telefono VARCHAR(50),
+    mensaje TEXT,
+    sid VARCHAR(100),
+    status VARCHAR(50),
+    error_message TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_whatsapp_logs_socio ON whatsapp_logs(socio_id);
+CREATE INDEX IF NOT EXISTS idx_whatsapp_logs_created_at ON whatsapp_logs(created_at);

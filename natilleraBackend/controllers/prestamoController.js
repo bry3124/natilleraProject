@@ -190,13 +190,13 @@ const registerPayment = async (req, res) => {
         );
 
         const prestamoRes = await query(`
-      SELECT p.*, s.nombre1, s.apellido1, s.correo, s.documento,
+      SELECT p.*, s.nombre1, s.apellido1, s.correo, s.documento, s.telefono, s.whatsapp_enabled,
              COALESCE(SUM(pp.monto_pago), 0) as total_pagado
       FROM prestamos p
       LEFT JOIN socios s ON p.socio_id = s.id
       LEFT JOIN prestamos_pagos pp ON pp.prestamo_id = p.id
       WHERE p.id = $1
-      GROUP BY p.id, s.nombre1, s.apellido1, s.correo, s.documento
+      GROUP BY p.id, s.nombre1, s.apellido1, s.correo, s.documento, s.telefono, s.whatsapp_enabled
     `, [req.params.id]);
 
         if (prestamoRes.rows.length > 0) {
@@ -217,10 +217,13 @@ const registerPayment = async (req, res) => {
 
             if (prestamo.correo) {
                 const socio = {
+                    id: prestamo.socio_id,
                     nombre1: prestamo.nombre1,
                     apellido1: prestamo.apellido1,
                     correo: prestamo.correo,
-                    documento: prestamo.documento
+                    documento: prestamo.documento,
+                    telefono: prestamo.telefono,
+                    whatsapp_enabled: prestamo.whatsapp_enabled
                 };
                 sendLoanPaymentEmail(socio, prestamo, rows[0]).catch(err => console.error('❌ Error sending loan payment email:', err));
             }

@@ -10,7 +10,14 @@ const rifaRoutes = require('./routes/rifaRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const authRoutes = require('./routes/authRoutes');
 
+const { initCronJobs } = require('./cronService');
+const { initWhatsApp } = require('./whatsappService');
+
 const app = express();
+
+// Initialize Services
+initCronJobs();
+initWhatsApp();
 
 // Middleware
 app.use(cors());

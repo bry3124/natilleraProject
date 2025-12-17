@@ -2,6 +2,7 @@
 const nodemailer = require('nodemailer');
 const { generarPazYSalvo } = require('./pdfService');
 const { generateWeeklyReceipt, generateLoanPaymentReceipt } = require('./receiptService');
+const { sendWhatsAppMessage } = require('./whatsappService');
 require('dotenv').config();
 
 // Create transporter
@@ -217,6 +218,11 @@ async function sendWeeklyPaymentEmail(socio, payment) {
   try {
     const info = await transporter.sendMail(mailOptions);
     console.log('✅ Email sent to:', socio.correo, '- Message ID:', info.messageId);
+
+    // Send WhatsApp Notification
+    const whatsAppMessage = `🏦 *Natillera MiAhorro*\n\nHola ${socio.nombre1}, hemos recibido tu pago de la *Semana ${payment.semana}* por valor de *${formatCurrency(payment.valor)}*.\n\nGracias por tu cumplimiento via email.`;
+    sendWhatsAppMessage(socio, whatsAppMessage).catch(err => console.error('Error in BG WhatsApp:', err));
+
     return { success: true, messageId: info.messageId };
   } catch (error) {
     console.error('❌ Error sending email to:', socio.correo, '- Error:', error.message);
@@ -409,6 +415,11 @@ async function sendLoanPaymentEmail(socio, prestamo, pago) {
   try {
     const info = await transporter.sendMail(mailOptions);
     console.log('✅ Email sent to:', socio.correo, '- Message ID:', info.messageId);
+
+    // Send WhatsApp Notification
+    const whatsAppMessage = `🏦 *Natillera MiAhorro*\n\nHola ${socio.nombre1}, confirmamos tu abono al préstamo por valor de *${formatCurrency(pago.monto_pago)}*.\nSaldo pendiente: *${formatCurrency(saldoPendiente)}*.\n\n${saldoPendiente <= 0 ? '🎉 *¡Felicitaciones! Deuda cancelada.*' : ''}`;
+    sendWhatsAppMessage(socio, whatsAppMessage).catch(err => console.error('Error in BG WhatsApp:', err));
+
     return { success: true, messageId: info.messageId };
   } catch (error) {
     console.error('❌ Error sending email to:', socio.correo, '- Error:', error.message);
@@ -524,6 +535,11 @@ async function sendRifaWinnerEmail(socio, rifa, ticketNumber) {
   try {
     const info = await transporter.sendMail(mailOptions);
     console.log(`✅ Rifa winner email sent to ${socio.correo}: ${info.messageId}`);
+
+    // Send WhatsApp Notification
+    const whatsAppMessage = `🏆 *¡FELICITACIONES!* 🏆\n\nHola ${socio.nombre1}, ¡ganaste la rifa *"${rifa.nombre}"*!\n\nNúmero ganador: *${ticketNumber}*\n\nPor favor contáctanos para tu premio.`;
+    sendWhatsAppMessage(socio, whatsAppMessage).catch(err => console.error('Error in BG WhatsApp:', err));
+
     return info;
   } catch (error) {
     console.error('❌ Error sending winner email:', error.message);

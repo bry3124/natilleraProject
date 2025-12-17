@@ -1,0 +1,59 @@
+2025/12/17-11:53:53.070 53f8 Reusing MANIFEST C:\automatizacionDeProcesos\natillera\natilleraBackend\.wwebjs_auth\session\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/12/17-11:53:53.070 53f8 Recovering log #166
+2025/12/17-11:53:53.217 53f8 Reusing old log C:\automatizacionDeProcesos\natillera\natilleraBackend\.wwebjs_auth\session\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb/000166.log 
+2025/12/17-11:53:56.288 5f6c Level-0 table #175: started
+2025/12/17-11:53:56.350 5f6c Level-0 table #175: 533140 bytes OK
+2025/12/17-11:53:56.354 5f6c Delete type=0 #166
+2025/12/17-11:53:56.355 5f6c Manual compaction at level-0 from '\x00-\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00.\x00\x00\x00' @ 0 : 0; will stop at '\x00-\x00\x00\x05' @ 741964 : 1
+2025/12/17-11:53:56.356 5f6c Compacting 1@0 + 1@1 files
+2025/12/17-11:53:56.480 5f6c Generated table #176@0: 22086 keys, 499013 bytes
+2025/12/17-11:53:56.480 5f6c Compacted 1@0 + 1@1 files => 499013 bytes
+2025/12/17-11:53:56.482 5f6c compacted to: files[ 0 1 3 0 0 0 0 ]
+2025/12/17-11:53:56.483 5f6c Manual compaction at level-0 from '\x00-\x00\x00\x05' @ 741964 : 1 .. '\x00.\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/12/17-11:53:56.517 5f6c Compacting 1@1 + 3@2 files
+2025/12/17-11:53:56.768 5f6c Generated table #177@1: 45681 keys, 2209978 bytes
+2025/12/17-11:53:56.997 5f6c Generated table #178@1: 34566 keys, 2191223 bytes
+2025/12/17-11:53:57.051 5f6c Generated table #179@1: 18763 keys, 432716 bytes
+2025/12/17-11:53:57.051 5f6c Compacted 1@1 + 3@2 files => 4833917 bytes
+2025/12/17-11:53:57.055 5f6c compacted to: files[ 0 0 3 0 0 0 0 ]
+2025/12/17-11:53:57.055 5f6c Delete type=2 #169
+2025/12/17-11:53:57.055 5f6c Delete type=2 #175
+2025/12/17-11:58:58.668 5f6c Manual compaction at level-0 from '\x00.\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00/\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/12/17-12:05:30.106 37b8 Level-0 table #181: started
+2025/12/17-12:05:30.168 37b8 Level-0 table #181: 737480 bytes OK
+2025/12/17-12:05:30.172 37b8 Delete type=2 #170
+2025/12/17-12:05:30.172 37b8 Delete type=2 #171
+2025/12/17-12:05:30.172 37b8 Delete type=2 #172
+2025/12/17-12:05:30.172 37b8 Delete type=0 #174
+2025/12/17-12:05:30.172 37b8 Delete type=2 #176
+2025/12/17-12:13:56.847 4dc Compacting 1@1 + 3@2 files
+2025/12/17-12:13:56.985 4dc Generated table #182@1: 46243 keys, 2214655 bytes
+2025/12/17-12:13:57.142 4dc Generated table #183@1: 32476 keys, 2190050 bytes
+2025/12/17-12:13:57.194 4dc Generated table #184@1: 22917 keys, 528572 bytes
+2025/12/17-12:13:57.194 4dc Compacted 1@1 + 3@2 files => 4933277 bytes
+2025/12/17-12:13:57.197 4dc compacted to: files[ 0 0 3 0 0 0 0 ]
+2025/12/17-12:13:57.197 4dc Delete type=2 #177
+2025/12/17-12:13:57.198 4dc Delete type=2 #178
+2025/12/17-12:13:57.199 4dc Delete type=2 #179
+2025/12/17-12:13:57.199 4dc Delete type=2 #181
+2025/12/17-12:31:16.840 5330 Level-0 table #186: started
+2025/12/17-12:31:16.907 5330 Level-0 table #186: 576659 bytes OK
+2025/12/17-12:31:16.910 5330 Delete type=0 #180
+2025/12/17-12:36:50.001 4dc Level-0 table #188: started
+2025/12/17-12:36:50.050 4dc Level-0 table #188: 621873 bytes OK
+2025/12/17-12:36:50.054 4dc Delete type=0 #185
+2025/12/17-12:40:48.447 2b98 Compacting 1@0 + 1@1 files
+2025/12/17-12:40:48.559 2b98 Generated table #189@0: 23724 keys, 267557 bytes
+2025/12/17-12:40:48.559 2b98 Compacted 1@0 + 1@1 files => 267557 bytes
+2025/12/17-12:40:48.563 2b98 compacted to: files[ 0 1 3 0 0 0 0 ]
+2025/12/17-12:53:59.601 1754 Compacting 1@1 + 2@2 files
+2025/12/17-12:53:59.761 1754 Generated table #190@1: 46230 keys, 2214098 bytes
+2025/12/17-12:53:59.922 1754 Generated table #191@1: 32395 keys, 2189601 bytes
+2025/12/17-12:53:59.950 1754 Generated table #192@1: 119 keys, 2915 bytes
+2025/12/17-12:53:59.950 1754 Compacted 1@1 + 2@2 files => 4406614 bytes
+2025/12/17-12:53:59.953 1754 compacted to: files[ 0 0 4 0 0 0 0 ]
+2025/12/17-12:53:59.956 1754 Delete type=2 #182
+2025/12/17-12:53:59.956 1754 Delete type=2 #183
+2025/12/17-12:53:59.957 1754 Delete type=2 #186
+2025/12/17-12:53:59.958 1754 Delete type=2 #188
+2025/12/17-12:53:59.959 1754 Delete type=2 #189
